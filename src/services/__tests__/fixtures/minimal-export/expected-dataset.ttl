@@ -1,0 +1,13 @@
+@prefix ex: <http://example.org/> .
+@prefix schema: <http://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/Building/b1> a ex:Building ;
+  ex:name "Building A" ;
+  ex:year "2020"^^xsd:gYear ;
+  schema:url <https://example.org/building-a> .
+
+<http://example.org/Building/b2> a ex:Building ;
+  ex:name "Building B" ;
+  ex:year "2021"^^xsd:gYear ;
+  schema:url <https://example.org/building-b> .

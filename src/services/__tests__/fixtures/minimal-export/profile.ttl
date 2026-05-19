@@ -1,0 +1,25 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix ex: <http://example.org/> .
+@prefix schema: <http://schema.org/> .
+
+ex:BuildingShape a sh:NodeShape ;
+  dct:title "Building" ;
+  dct:description "Minimal building export fixture"@en ;
+  sh:targetClass ex:Building ;
+  sh:property [
+    sh:name "Name" ;
+    sh:path ex:name ;
+    sh:datatype xsd:string
+  ] ;
+  sh:property [
+    sh:name "Year" ;
+    sh:path ex:year ;
+    sh:datatype xsd:gYear
+  ] ;
+  sh:property [
+    sh:name "Website" ;
+    sh:path schema:url ;
+    sh:nodeKind sh:IRI
+  ] .

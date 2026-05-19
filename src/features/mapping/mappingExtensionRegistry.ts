@@ -24,6 +24,13 @@ import type {
 } from '@/features/mapping/extensions/core/types'
 import { mappingExtensionModules } from '@/features/mapping/extensions/modules'
 
+/**
+ * App-internal registry for current mapping UI/runtime modules.
+ *
+ * This is not a public plugin API.
+ * Do not build external extension contracts on top of this until
+ * PipelineState and core export boundaries are stable.
+ */
 const TableNode = defineAsyncComponent(() => import('@/features/mapping/components/canvas/TableNode.vue'))
 const ShapeNode = defineAsyncComponent(() => import('@/features/mapping/components/canvas/ShapeNode.vue'))
 

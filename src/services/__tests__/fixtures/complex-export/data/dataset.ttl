@@ -1,0 +1,343 @@
+@prefix dcterms: <http://purl.org/dc/terms/>.
+@prefix dc: <http://purl.org/dc/elements/1.1/>.
+@prefix dnb: <https://d-nb.info/standards/elementset/dnb#>.
+@prefix gndo: <https://d-nb.info/standards/elementset/gnd#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix powder: <http://www.w3.org/2007/05/powder-s#>.
+@prefix prov: <http://www.w3.org/ns/prov#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix sh: <http://www.w3.org/ns/shacl#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix aps: <https://w3id.org/nfdi4ing/profiles/>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+@prefix schema: <http://schema.org/>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix dcat: <http://www.w3.org/ns/dcat#>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix dct: <http://purl.org/dc/terms/>.
+@prefix Bui: <http://example.org/BuildingOrMemorial/>.
+@prefix gnd: <https://d-nb.info/standards/elementset/gnd#>.
+@prefix Loc: <http://example.org/Location/>.
+@prefix pow: <http://www.w3.org/2007/05/powder-s#>.
+@prefix Res: <http://example.org/Resource/>.
+@prefix e: <http://example.org/e65fc010-5fe6-4d74-9333-8601c31dde5d/>.
+@prefix pro: <https://w3id.org/nfdi4ing/profiles/>.
+@prefix Role: <http://example.org/Role/>.
+@prefix Org: <http://example.org/Organisation/>.
+@prefix www: <https://www.geonames.org/>.
+@prefix ge: <http://www.opengis.net/ont/geosparql#>.
+@prefix class: <https://identifier.buildingsmart.org/uri/nbs/uniclass2015/1/class/>.
+@prefix xml: <http://www.w3.org/XML/1998/namespace>.
+
+<urn:ardmp:metadata:3409b2fc-db9e-4953-97cc-2a81e3045ac8> dct:identifier "https://orcid.org/0000-0001-6259-4068";
+    foaf:name "Roger";
+    a foaf:Person.
+<urn:ardmp:metadata:26607997-d76d-4c8d-bd6a-8f0a34d95f24> a prov:Attribution;
+    prov:agent <urn:ardmp:metadata:3409b2fc-db9e-4953-97cc-2a81e3045ac8>;
+    dcat:hadRole <http://w3id.org/nfdi4ing/metadata4ing#DataCurator>.
+<urn:ardmp:metadata:dataset> a dcat:Dataset;
+    prov:qualifiedAttribution <urn:ardmp:metadata:26607997-d76d-4c8d-bd6a-8f0a34d95f24>, <urn:ardmp:metadata:77c76386-d917-43ea-90dd-5b31283fc378>;
+    dct:issued "2026-05-19"^^xsd:date;
+    dct:license <http://creativecommons.org/licenses/by/4.0/>;
+    dct:description "Beschreibung meines Datensatzes"@en;
+    dct:title "Roger's Testdatensatz"@en;
+    dct:conformsTo pro:4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6.
+<urn:ardmp:metadata:ed1e8127-a94f-4947-9e2f-ccb672737df6> foaf:name "ULB Darmstadt";
+    a foaf:Organisation.
+<urn:ardmp:metadata:77c76386-d917-43ea-90dd-5b31283fc378> a prov:Attribution;
+    prov:agent <urn:ardmp:metadata:ed1e8127-a94f-4947-9e2f-ccb672737df6>;
+    dcat:hadRole <http://w3id.org/nfdi4ing/metadata4ing#ResearchGroup>.
+
+# ----- Generated RDF data -----
+
+@prefix dct: <http://purl.org/dc/terms/>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix prov: <http://www.w3.org/ns/prov#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix schema: <http://schema.org/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix Bui: <http://example.org/BuildingOrMemorial/>.
+@prefix gnd: <https://d-nb.info/standards/elementset/gnd#>.
+@prefix Loc: <http://example.org/Location/>.
+@prefix pow: <http://www.w3.org/2007/05/powder-s#>.
+@prefix Res: <http://example.org/Resource/>.
+@prefix e: <http://example.org/e65fc010-5fe6-4d74-9333-8601c31dde5d/>.
+@prefix pro: <https://w3id.org/nfdi4ing/profiles/>.
+@prefix dcat: <http://www.w3.org/ns/dcat#>.
+@prefix Role: <http://example.org/Role/>.
+@prefix Org: <http://example.org/Organisation/>.
+@prefix www: <https://www.geonames.org/>.
+@prefix ge: <http://www.opengis.net/ont/geosparql#>.
+@prefix class: <https://identifier.buildingsmart.org/uri/nbs/uniclass2015/1/class/>.
+
+Bui:rec7UjeF9x51h6anB
+    a gnd:BuildingOrMemorial;
+    dct:spatial Loc:recWEcXAabUK5njnu;
+    pow:describedby Res:recYNd9n8uvJKdADu;
+    prov:qualifiedAttribution e:recfp51375qn8proi, e:recKOea6lke2BemFu;
+    gnd:dateOfProduction "2020";
+    gnd:preferredName "FE Home Office".
+Bui:reccs67kxCv2yLwRV
+    a gnd:BuildingOrMemorial;
+    dct:spatial Loc:recWEcXAabUK5njnu;
+    pow:describedby Res:recG66xA4CMsFkyde, Res:recW0CPPouzbSSjrA;
+    prov:qualifiedAttribution
+        e:recBBbD616ywCzwdK, e:recCg9b03qyTwprUE, e:recNatjTdXbWGm9oP,
+        e:recNKGOc4ABliCyyq, e:recqqg9hRlNLclOoE, e:recR9yLi1QC6grXGH,
+        e:recTcB7BaFJEOKPwz;
+    gnd:dateOfProduction "2017";
+    gnd:preferredName "Brock Commons".
+Bui:recn7wUEoLSRAfIMy
+    a gnd:BuildingOrMemorial;
+    dct:spatial Loc:recew8Bwdk48nBBWp;
+    pow:describedby
+    Res:recPOxgkO48dHsPHB, Res:recwUCHOEgaPPcw36, Res:recxF60FgOJh6JERc;
+    prov:qualifiedAttribution
+        e:recdlvZtMCwlYbOpj, e:recLv4VYtK7qS4VBS, e:reco69Qf0RO2pPgUH,
+        e:rectt9G6bCyvsqgwJ;
+    gnd:dateOfProduction "2019";
+    gnd:preferredName "6x6".
+Bui:recp2pP8VvFDXtsh6
+    a gnd:BuildingOrMemorial;
+    dct:spatial Loc:reccTlRYeeXFZYkCr;
+    pow:describedby Res:reckfyW9Sw2GIuPPO, Res:recmv1erXo3YztvtU;
+    prov:qualifiedAttribution e:reckLwHrjgRAacMdV;
+    gnd:dateOfProduction "2021";
+    gnd:preferredName "Adidas North American Headquarters GOLD".
+Bui:recyvoJPe0b9sbx1G
+    a gnd:BuildingOrMemorial;
+    dct:spatial Loc:reccW0hCc8o0jU3Pv;
+    pow:describedby
+    Res:recOO7Vylqc5VeDva, Res:recPBWTCXdakQPzum, Res:rectmJfPMwTpeaows;
+    prov:qualifiedAttribution e:reci6W0ZSA8fUcK5I, e:recMyaoL2mMXihJ0q;
+    gnd:dateOfProduction "2022";
+    gnd:preferredName "Port Plus Obayashi Yokohama Training Center ".
+e:recBBbD616ywCzwdK
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recUCf9oxrUodJnpR;
+    prov:agent Org:reciciZ50UTIEB5ad.
+e:recCg9b03qyTwprUE
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recpyxwn6MndlO95u;
+    prov:agent Org:reczdErIqN8rznL2R.
+e:recdlvZtMCwlYbOpj
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recqAvtb63hgc3Ge6;
+    prov:agent Org:recA1ToRa23pBLQtz.
+e:recfp51375qn8proi
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recUCf9oxrUodJnpR;
+    prov:agent Org:rec6rUtgwYlm5THmP.
+e:reci6W0ZSA8fUcK5I
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recBad166HV4q5J9S;
+    prov:agent Org:recWqERHB0JzoVcCp.
+e:reckLwHrjgRAacMdV
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recUCf9oxrUodJnpR;
+    prov:agent Org:recP016WNlEOfBpHH.
+e:recKOea6lke2BemFu
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recqAvtb63hgc3Ge6, Role:recWpvLKiGdUvCm2g;
+    prov:agent Org:recATyZy2Z0UWfxjC.
+e:recLv4VYtK7qS4VBS
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recTCWwLjKnyLapsG;
+    prov:agent Org:recPWecr5z9JAKng3 .
+e:recMyaoL2mMXihJ0q
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recqAvtb63hgc3Ge6, Role:recUCf9oxrUodJnpR;
+    prov:agent Org:recHScubs4nXkxniq.
+e:recNatjTdXbWGm9oP
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recmopVriBaURSLsG;
+    prov:agent Org:recqboDHmgKo8g9T0 .
+e:recNKGOc4ABliCyyq
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recWpvLKiGdUvCm2g;
+    prov:agent Org:recuA1GEEnSQLLh60 .
+e:reco69Qf0RO2pPgUH
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recUCf9oxrUodJnpR;
+    prov:agent Org:rec5XiMNENmHI80bk.
+e:recqqg9hRlNLclOoE
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recUCf9oxrUodJnpR;
+    prov:agent Org:recgzuCEvoeEA1a0c.
+e:recR9yLi1QC6grXGH
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recqAvtb63hgc3Ge6;
+    prov:agent Org:recATyZy2Z0UWfxjC.
+e:recTcB7BaFJEOKPwz
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:rec4s8JxPHxnXR6Ow;
+    prov:agent Org:recShc8d0snOX118b.
+e:rectt9G6bCyvsqgwJ
+    a pro:e65fc010-5fe6-4d74-9333-8601c31dde5d;
+    dcat:hadRole Role:recBad166HV4q5J9S, Role:recmBly71EV5HyLWq;
+    prov:agent Org:recGpeqzgVbtTzokm.
+Loc:reccTlRYeeXFZYkCr
+    a dct:Location;
+    dct:identifier www:5746545;
+    ge:asWKT "POINT(-122.67621 45.52345)"^^ge:wktLiteral;
+    rdfs:label "Portland";
+    pro:geonamesId "5746545".
+Loc:reccW0hCc8o0jU3Pv
+    a dct:Location;
+    dct:identifier www:1854383;
+    ge:asWKT "POINT(133.93333 34.65)"^^ge:wktLiteral;
+    rdfs:label "Okayama";
+    pro:geonamesId "1854383".
+Loc:recew8Bwdk48nBBWp
+    a dct:Location;
+    dct:identifier www:3121456;
+    ge:asWKT "POINT(2.82493 41.98311)"^^ge:wktLiteral;
+    rdfs:label "Girona";
+    pro:geonamesId "3121456".
+Loc:recWEcXAabUK5njnu
+    a dct:Location;
+    dct:identifier www:6173331;
+    ge:asWKT "POINT(-123.11934 49.24966)"^^ge:wktLiteral;
+    rdfs:label "Vancouver";
+    pro:geonamesId "6173331".
+Org:rec5XiMNENmHI80bk
+    a foaf:Organisation;
+    schema:Address "https://www.boschcapdeferro.com/en";
+    foaf:name "Bosch.Capdeferro".
+Org:rec6rUtgwYlm5THmP
+    a foaf:Organisation;
+    schema:Address "https://www.f2a.ca/";
+    foaf:name "f2a architecture".
+Org:recA1ToRa23pBLQtz a foaf:Organisation; foaf:name "Blazquez Guanter SLP".
+
+Org:recATyZy2Z0UWfxjC
+    a foaf:Organisation;
+    schema:Address "https://www.fastepp.com/";
+    foaf:name "Fast + Epp".
+Org:recGpeqzgVbtTzokm
+a foaf:Organisation; schema:Address "https://egoin.com/"; foaf:name "Egoin".
+Org:recgzuCEvoeEA1a0c
+    a foaf:Organisation;
+    schema:Address "https://www.actonostry.ca/";
+    foaf:name "Acton Ostry Architects".
+Org:recHScubs4nXkxniq
+    a foaf:Organisation;
+    schema:Address "https://www.obayashi.co.jp/en/";
+    foaf:name "Obayashi Corporation.".
+Org:reciciZ50UTIEB5ad
+    a foaf:Organisation;
+    schema:Address "https://www.hkarchitekten.at/de/";
+    foaf:name "Hermann Kaufmann + Partner ZT GmbH".
+Org:recP016WNlEOfBpHH
+    a foaf:Organisation;
+    schema:Address "https://leverarchitecture.com/";
+    foaf:name "Lever Architecture".
+Org:recPWecr5z9JAKng3 a foaf:Organisation; foaf:name "Procasa SL".
+
+Org:recqboDHmgKo8g9T0 a foaf:Organisation; foaf:name "Structurlam".
+
+Org:recShc8d0snOX118b a foaf:Organisation; foaf:name "Urban One Builders".
+
+Org:recuA1GEEnSQLLh60
+a foaf:Organisation; foaf:name "University of British Columbia".
+Org:recWqERHB0JzoVcCp
+    a foaf:Organisation;
+    schema:Address "https://en.shelter.inc/";
+    foaf:name "Shelter Co., Ltd.".
+Org:reczdErIqN8rznL2R a foaf:Organisation; foaf:name "Seagate Structures".
+
+Res:recG66xA4CMsFkyde
+    a rdfs:Resource;
+    schema:dateModified "2026-03-10"^^xsd:date;
+    schema:name "Fastepp";
+    schema:url
+        "https://www.fastepp.com/portfolio/ubc-tallwood-house-at-brock-commons-2/"^^xsd:anyURI.
+Res:reckfyW9Sw2GIuPPO
+    a rdfs:Resource;
+    schema:dateModified "2024-03-05"^^xsd:date;
+    schema:name "Adidas in the PLAN";
+    schema:url
+        "https://leverarchitecture.com/uploads/1022/1665011119580755/Adidas_in_the_PLAN_scans.pdf"^^xsd:anyURI.
+Res:recmv1erXo3YztvtU
+    a rdfs:Resource;
+    schema:dateModified "2025-10-07"^^xsd:date;
+    schema:name "adidas Headquarters Expansion and Gold Building";
+    schema:url
+        "https://leverarchitecture.com/projects/adidas_headquarters_expansion_and_gold_building"^^xsd:anyURI.
+Res:recOO7Vylqc5VeDva
+    a rdfs:Resource;
+    schema:dateModified "2023-03-29"^^xsd:date;
+    schema:name "OY Project（Port Plus）";
+    schema:url "https://www.youtube.com/watch?v=D4gEmJyEq1c"^^xsd:anyURI.
+Res:recPBWTCXdakQPzum
+    a rdfs:Resource;
+    schema:dateModified "2026-04-28"^^xsd:date;
+    schema:name "Port Plus";
+    schema:url "https://design.obayashi.co.jp/oyproject/details/"^^xsd:anyURI.
+Res:recPOxgkO48dHsPHB
+    a rdfs:Resource;
+    schema:dateModified "2023-02-15"^^xsd:date;
+    schema:name "6x6 profile sheet";
+    schema:url
+        "https://www.boschcapdeferro.com/_data/pdf_en/bloc6x6-ang-201-en.pdf"^^xsd:anyURI.
+Res:rectmJfPMwTpeaows
+    a rdfs:Resource;
+    schema:dateModified "2026-01-12"^^xsd:date;
+    schema:name
+    "中大規模木造建築データベース Medium-to-Large-Scale Timber Construction Database";
+    schema:url
+        "https://www.daimoku.jp/cgi-data/johosheet/kj202406211453000244.pdf"^^xsd:anyURI.
+Res:recW0CPPouzbSSjrA
+    a rdfs:Resource;
+    schema:dateModified "2026-04-29"^^xsd:date;
+    schema:name
+        "CASE STUDY: AN 18 STOREY TALL MASS TIMBER HYBRID STUDENT RESIDENCE AT THE UNIVERSITY OF BRITISH COLUMBIA, VANCOUVER";
+    schema:url
+        "https://www.fastepp.com/wp-content/uploads/WCTE-Tallwood-House-at-Brock-Commons-Case-Study-Credit-Fast-Epp.pdf"^^xsd:anyURI.
+Res:recwUCHOEgaPPcw36
+    a rdfs:Resource;
+    schema:dateModified "2026-05-05"^^xsd:date;
+    schema:name "Egoin";
+    schema:url "https://LuisOrozco.egoin/"^^xsd:anyURI.
+Res:recxF60FgOJh6JERc
+    a rdfs:Resource;
+    schema:dateModified "2026-04-09"^^xsd:date;
+    schema:name "6x6 profile website";
+    schema:url
+    "https://www.boschcapdeferro.com/en/work/6x6-block.html"^^xsd:anyURI.
+Res:recYNd9n8uvJKdADu
+    a rdfs:Resource;
+    schema:dateModified "2026-04-09"^^xsd:date;
+    schema:name "Fast + Epp Home Office";
+    schema:url
+    "https://www.fastepp.com/portfolio/fast-epp-home-office/"^^xsd:anyURI.
+Role:rec4s8JxPHxnXR6Ow
+    a prov:Role;
+    rdfs:label "General Contractor"^^rdf:langString;
+    owl:sameAs class:Ro_30_10_20 .
+Role:recBad166HV4q5J9S
+    a prov:Role;
+    rdfs:label "Manufacturer"^^rdf:langString;
+    owl:sameAs class:Ro_30_40_54 .
+Role:recmBly71EV5HyLWq a prov:Role; rdfs:label "Installer"^^rdf:langString.
+
+Role:recmopVriBaURSLsG
+    a prov:Role;
+    rdfs:label "Timber Supplier"^^rdf:langString;
+    owl:sameAs class:Ro_30_40_86 .
+Role:recpyxwn6MndlO95u
+    a prov:Role;
+    rdfs:label "Timber Contractor"^^rdf:langString;
+    owl:sameAs class:Ro_30_10_20 .
+Role:recqAvtb63hgc3Ge6
+a prov:Role; rdfs:label "Engineer"^^rdf:langString; owl:sameAs class:Ro_50_20 .
+Role:recTCWwLjKnyLapsG a prov:Role; rdfs:label "Developer"^^rdf:langString.
+
+Role:recUCf9oxrUodJnpR
+    a prov:Role;
+    rdfs:label "Architect"^^rdf:langString;
+    owl:sameAs class:Ro_50_10_03 .
+Role:recWpvLKiGdUvCm2g
+a prov:Role; rdfs:label "Client"^^rdf:langString; owl:sameAs class:Ro_10_20_14 .

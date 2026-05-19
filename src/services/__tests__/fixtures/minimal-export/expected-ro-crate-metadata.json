@@ -1,0 +1,84 @@
+{
+  "@context": [
+    "https://w3id.org/ro/crate/1.2/context",
+    {
+      "@vocab": "http://schema.org/"
+    }
+  ],
+  "@graph": [
+    {
+      "@id": "ro-crate-metadata.json",
+      "@type": "CreativeWork",
+      "conformsTo": {
+        "@id": "https://w3id.org/ro/crate/1.2"
+      },
+      "about": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "./",
+      "@type": "Dataset",
+      "name": "Minimal Buildings Dataset",
+      "description": "A minimal two-row export fixture for stabilization tests.",
+      "datePublished": "2026-05-18",
+      "creator": [
+        {
+          "@id": "#agent-tester"
+        }
+      ],
+      "hasPart": [
+        {
+          "@id": "data/dataset.ttl"
+        },
+        {
+          "@id": "mapping/mapping.rml.ttl"
+        },
+        {
+          "@id": "sources/source_csv.csv"
+        },
+        {
+          "@id": "shapes/BuildingShape.ttl"
+        },
+        {
+          "@id": "README.md"
+        }
+      ]
+    },
+    {
+      "@id": "#agent-tester",
+      "@type": "Person",
+      "name": "ARDMP Test User"
+    },
+    {
+      "@id": "data/dataset.ttl",
+      "@type": "File",
+      "encodingFormat": "text/turtle",
+      "name": "Generated RDF dataset"
+    },
+    {
+      "@id": "mapping/mapping.rml.ttl",
+      "@type": "File",
+      "encodingFormat": "text/turtle",
+      "name": "Generated RML mapping"
+    },
+    {
+      "@id": "sources/source_csv.csv",
+      "@type": "File",
+      "encodingFormat": "text/csv",
+      "name": "Source CSV"
+    },
+    {
+      "@id": "shapes/BuildingShape.ttl",
+      "@type": "File",
+      "encodingFormat": "text/turtle",
+      "name": "Building"
+    },
+    {
+      "@id": "README.md",
+      "@type": "File",
+      "encodingFormat": "text/markdown",
+      "name": "Package README"
+    }
+  ]
+}

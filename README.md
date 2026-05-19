@@ -31,9 +31,9 @@ or maintaining one-off conversion scripts.
   - `ro-crate-metadata.json`
   - generated RDF as `data/dataset.ttl`
   - source tables as CSV
+  - materialized enrichment or transform outputs as CSV when they are part of the exportable pipeline state
   - resolved SHACL profiles
   - RML mapping output
-  - an internal mapping JSON for round-trip workflows
 
 ## Who It Is For
 
@@ -96,7 +96,7 @@ http://localhost:5173/
 ```text
 src/
   assets/profiles/      bundled SHACL profiles
-  components/           shared shell and browse components
+  components/           app-wide shared UI
   domain/               framework-light domain models
   features/             feature modules for mapping, browse, export, SHACL UI
   router/               route definitions

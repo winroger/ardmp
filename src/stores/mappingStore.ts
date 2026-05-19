@@ -17,7 +17,7 @@ import {
   syncTransformationNodeMappings,
   upsertUiEdge,
 } from '@/services/mapping/mappingEdgeSync'
-import { cloneMappingEdges, normalizeMappingEdge, type MappingStoreSnapshot } from '@/services/project/projectSnapshot'
+import { cloneMappingEdges, type MappingStoreSnapshot } from '@/services/project/projectSnapshot'
 import { useDataStore } from '@/stores/dataStore'
 
 export const useMappingStore = defineStore('mapping', () => {
@@ -141,38 +141,6 @@ export const useMappingStore = defineStore('mapping', () => {
     const { removed } = removeExtensionUiEdge<TransformationUiEdge>('node.transformation.uiEdges', edgeId)
     if (removed?.target.startsWith('transform:')) syncTransformationMappings(removed.target)
   }
-
-
-  /**
-   * Imports edges from a mapping.json blob (as exported by RO-Crate bundle).
-   * Returns how many edges were applied and how many were skipped.
-   */
-  function importFromJson(json: string): { imported: number; skipped: number } {
-    let imported = 0
-    let skipped = 0
-    try {
-      const parsed = JSON.parse(json)
-      const edges: unknown[] = Array.isArray(parsed) ? parsed : parsed?.edges ?? []
-      for (const edge of edges) {
-        if (
-          typeof edge === 'object' && edge !== null
-          && typeof (edge as Record<string, unknown>).sourceId === 'string'
-          && typeof (edge as Record<string, unknown>).sourceHeader === 'string'
-          && typeof (edge as Record<string, unknown>).shapeIri === 'string'
-          && typeof (edge as Record<string, unknown>).propertyPath === 'string'
-        ) {
-          state.addOrReplace(normalizeMappingEdge(edge as MappingEdge))
-          imported++
-        } else {
-          skipped++
-        }
-      }
-    } catch {
-      skipped++
-    }
-    return { imported, skipped }
-  }
-
   function createSnapshot(): MappingStoreSnapshot {
     return {
       edges: cloneMappingEdges(state.edges),
@@ -222,7 +190,6 @@ export const useMappingStore = defineStore('mapping', () => {
     syncTransformationMappings,
     upsertTransformationUiEdge,
     removeTransformationUiEdge,
-    importFromJson,
     createSnapshot,
     restoreSnapshot,
     reset,

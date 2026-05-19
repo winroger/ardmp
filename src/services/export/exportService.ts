@@ -4,16 +4,17 @@
  * button anywhere in the app.
  */
 import JSZip from 'jszip'
+import { TabularDataSource, type DataSource } from '@/domain/DataSource'
+import { buildRoCrateMetadata, type RoCrateFile } from '@/core/export/roCrate'
 import { dataSourceOriginLabel } from '@/domain/DataSource'
 import { generateRdf, serializeGraph } from '@/services/rdf/rdfGenerator'
 import { exportedHeadersForSource, exportedRowsForSource } from '@/services/mapping/mappingSemantics'
-import { buildRoCrateMetadata, type RoCrateFile } from '@/services/export/roCrate'
 import { serializeMappingAsRml } from '@/services/export/rmlSerializer'
 import { extractDatasetMetadata } from '@/services/export/datasetMetadata'
 import { extractProfileMetadata } from '@/services/export/profileMetadata'
 import type { ApplicationProfile, ShaclProfile } from '@/domain/NodeShape'
-import type { DataSource } from '@/domain/DataSource'
-import type { MappingState } from '@/domain/Mapping'
+import { mappingSecondarySourceHeader, mappingTransformId, type MappingState } from '@/domain/Mapping'
+import { findTransformSemanticsHandler } from '@/features/mapping/mappingExtensionRegistry'
 
 export interface ExportInput {
   projectTitle: string
@@ -58,7 +59,7 @@ This bundle is an [**RO-Crate 1.2**](https://w3id.org/ro/crate/1.2) packaged by
 - \`sources/\` — ${sources} source table(s) (\`text/csv\`)
 - \`data/dataset.ttl\` — generated RDF graph
 - \`mapping/mapping.rml.ttl\` — RML mapping export
-- \`mapping/mapping.json\` — internal mapping definition (${mappings} edge(s))
+- Includes ${mappings} mapping edge(s) reflected in the exported RML
 `
 }
 
@@ -76,15 +77,15 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export async function buildRoCratePackage(input: ExportInput): Promise<ExportPackage> {
   const zip = new JSZip()
   const files: RoCrateFile[] = []
+  const exportSources = [...input.sources, ...buildTransformExportSources(input.mapping, input.sources)]
 
   // 1. Generated RDF
   const result = generateRdf(input.ap, input.mapping, input.sources)
   let ttl = await serializeGraph(result.store, 'text/turtle')
 
-  // Append metadata-form turtle (from <shacl-form>) if present
+  // Prepend metadata-form turtle (from <shacl-form>) if present
   if (input.metadataTurtle && input.metadataTurtle.trim().length > 0) {
-    ttl += '\n\n# ----- Dataset metadata (shacl-form) -----\n'
-    ttl += input.metadataTurtle
+    ttl = `${input.metadataTurtle.trim()}\n\n# ----- Generated RDF data -----\n\n${ttl}`
   }
 
   zip.file('data/dataset.ttl', ttl)
@@ -117,7 +118,7 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
   })
 
   // 3. Source tables
-  input.sources.forEach(src => {
+  exportSources.forEach(src => {
     const path = `sources/${sanitize(src.name)}.csv`
     const csvRows = exportedRowsForSource(src)
     const csvHeaders = exportedHeadersForSource(src)
@@ -142,29 +143,16 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
     conformsTo: 'https://rml.io/specs/rml/',
   })
 
-  // 5. Internal mapping definition
-  const mappingJson = JSON.stringify({
-    project: { title: input.projectTitle, createdAt: new Date().toISOString() },
-    edges: input.mapping.edges,
-  }, null, 2)
-  zip.file('mapping/mapping.json', mappingJson)
-  files.push({
-    path: 'mapping/mapping.json',
-    name: 'Internal mapping definition',
-    description: `${input.mapping.edges.length} mapping edge(s) connecting source columns to SHACL property paths for tool round-trip import.`,
-    encodingFormat: 'application/json',
-  })
-
-  // 6. README
+  // 5. README
   zip.file('README.md', buildReadme(
     input.projectTitle,
     input.profiles.length,
-    input.sources.length,
+    exportSources.length,
     input.mapping.edges.length,
   ))
   files.push({ path: 'README.md', name: 'Bundle README', encodingFormat: 'text/markdown' })
 
-  // 7. RO-Crate metadata
+  // 6. RO-Crate metadata
   const derivedMetadata = extractDatasetMetadata(input.metadataTurtle ?? '')
   const profileDescriptions = profileSummaries
     .map(summary => summary.metadata.description)
@@ -196,6 +184,44 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
     subjectCount: result.subjectCount,
     tripleCount: result.tripleCount,
   }
+}
+
+function buildTransformExportSources(mapping: MappingState, sources: DataSource[]): DataSource[] {
+  const sourceMap = new Map(sources.map(source => [source.id, source]))
+  const transformSources = new Map<string, DataSource>()
+
+  for (const edge of mapping.edges) {
+    const transformId = mappingTransformId(edge)
+    const transformNodeId = edge.transformNodeId
+    if (!transformId || !transformNodeId) continue
+
+    const transformHandler = findTransformSemanticsHandler(transformId)
+    if (!transformHandler?.buildValue) continue
+
+    const baseSource = sourceMap.get(edge.sourceId)
+    if (!baseSource) continue
+
+    const key = `${transformId}:${transformNodeId}:${edge.sourceId}:${edge.propertyPath}`
+    if (transformSources.has(key)) continue
+
+    const secondaryHeader = mappingSecondarySourceHeader(edge)
+    const rows = baseSource.rows.map(row => [transformHandler.buildValue?.({ edge, source: baseSource, row }) ?? ''])
+    const hasAnyValue = rows.some(([value]) => String(value ?? '').trim().length > 0)
+    if (!hasAnyValue || !secondaryHeader) continue
+
+    transformSources.set(key, new TabularDataSource({
+      id: `transform-output:${transformNodeId}:${edge.sourceId}:${edge.propertyPath}`,
+      name: `${transformId} ${transformNodeId}`,
+      headers: ['wkt'],
+      rows,
+      recordIds: baseSource.recordIds,
+      role: 'derived',
+      origin: { kind: 'generated', provider: transformId },
+      hidden: true,
+    }))
+  }
+
+  return Array.from(transformSources.values())
 }
 
 export async function exportRoCrate(input: ExportInput): Promise<ExportResult> {

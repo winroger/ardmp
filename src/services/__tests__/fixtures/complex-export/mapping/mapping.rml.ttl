@@ -1,0 +1,189 @@
+@prefix dct: <http://purl.org/dc/terms/>.
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix prov: <http://www.w3.org/ns/prov#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix schema: <http://schema.org/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix rr: <http://www.w3.org/ns/r2rml#>.
+@prefix rml: <http://semweb.mmlab.be/ns/rml#>.
+@prefix ql: <http://semweb.mmlab.be/ns/ql#>.
+@prefix tri: <http://example.org/mapping/triples-map/>.
+@prefix pro: <https://w3id.org/nfdi4ing/profiles/>.
+@prefix ge: <http://www.opengis.net/ont/geosparql#>.
+@prefix pow: <http://www.w3.org/2007/05/powder-s#>.
+@prefix gnd: <https://d-nb.info/standards/elementset/gnd#>.
+@prefix dcat: <http://www.w3.org/ns/dcat#>.
+
+tri:https-w3id-org-nfdi4ing-profiles-1cf39480-24ef-41db-a5b3-070601a05cc3-airtable-apphvolecwij9txpl-tblk9z53vbukhcfps
+    a rr:TriplesMap;
+    rml:logicalSource
+    [ rml:referenceFormulation ql:CSV; rml:source "sources/N_Places.csv" ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap [ rml:reference "IRI"; rr:termType rr:IRI ];
+                rr:predicate dct:identifier
+            ],
+            [
+                rr:objectMap
+                [ rml:reference "geonames id"; rr:datatype xsd:string ];
+                rr:predicate pro:geonamesId
+            ];
+    rr:subjectMap
+            [
+                rr:class dct:Location;
+                rr:template "http://example.org/Location/{_recordId}"
+            ].
+tri:https-w3id-org-nfdi4ing-profiles-1cf39480-24ef-41db-a5b3-070601a05cc3-geonames-output-geonames-ffa59aaf-19ce-495d-9550-78288c16c8d4
+    a rr:TriplesMap;
+    rml:logicalSource
+            [
+                rml:referenceFormulation ql:CSV;
+                rml:source
+                    "sources/geonames_geonames_ffa59aaf-19ce-495d-9550-78288c16c8d4.csv"
+            ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap
+                        [
+                            rr:datatype ge:wktLiteral;
+                            rr:template "POINT({lng} {lat})";
+                            rr:termType rr:Literal
+                        ];
+                rr:predicate ge:asWKT
+            ],
+        [ rr:objectMap [ rml:reference "name" ]; rr:predicate rdfs:label ];
+    rr:subjectMap
+            [
+                rr:class dct:Location;
+                rr:template "http://example.org/Location/{_recordId}"
+            ].
+tri:https-w3id-org-nfdi4ing-profiles-1f6323a9-b59b-4fb0-9f0f-63fd8ef9594a-airtable-apphvolecwij9txpl-tblnco50jmoztkeli
+    a rr:TriplesMap;
+    rml:logicalSource
+    [ rml:referenceFormulation ql:CSV; rml:source "sources/E_Buildings.csv" ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap
+                        [
+                            rr:template
+                            "http://example.org/Location/{Location}";
+                            rr:termType rr:IRI
+                        ];
+                rr:predicate dct:spatial
+            ],
+            [
+                rr:objectMap
+                        [
+                            rr:template "http://example.org/Resource/{Link}";
+                            rr:termType rr:IRI
+                        ];
+                rr:predicate pow:describedby
+            ],
+            [
+                rr:objectMap
+                        [
+                            rr:template
+                                "http://example.org/e65fc010-5fe6-4d74-9333-8601c31dde5d/{Stakeholders}";
+                            rr:termType rr:IRI
+                        ];
+                rr:predicate prov:qualifiedAttribution
+            ],
+            [
+                rr:objectMap [ rml:reference "CompletionYear" ];
+                rr:predicate gnd:dateOfProduction
+            ],
+            [
+                rr:objectMap [ rml:reference "Project Name" ];
+                rr:predicate gnd:preferredName
+            ];
+    rr:subjectMap
+            [
+                rr:class gnd:BuildingOrMemorial;
+                rr:template "http://example.org/BuildingOrMemorial/{_recordId}"
+            ].
+tri:https-w3id-org-nfdi4ing-profiles-3a566450-14ce-432d-9d10-9e1c83b8477a-airtable-apphvolecwij9txpl-tblg1t7oytdb86oyt
+    a rr:TriplesMap;
+    rml:logicalSource
+            [
+                rml:referenceFormulation ql:CSV;
+                rml:source "sources/E_Organizations.csv"
+            ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap [ rml:reference "Website" ];
+                rr:predicate schema:Address
+            ],
+        [ rr:objectMap [ rml:reference "Name" ]; rr:predicate foaf:name ];
+    rr:subjectMap
+            [
+                rr:class foaf:Organisation;
+                rr:template "http://example.org/Organisation/{_recordId}"
+            ].
+tri:https-w3id-org-nfdi4ing-profiles-6c98fa13-18d1-4b67-8cab-bd74df4e6fa9-airtable-apphvolecwij9txpl-tbldszurr5d1ggfvo
+    a rr:TriplesMap;
+    rml:logicalSource
+    [ rml:referenceFormulation ql:CSV; rml:source "sources/V_Roles.csv" ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap
+                [ rml:reference "Label"; rr:datatype rdf:langString ];
+                rr:predicate rdfs:label
+            ],
+            [
+                rr:objectMap [ rml:reference "sameAs"; rr:termType rr:IRI ];
+                rr:predicate owl:sameAs
+            ];
+    rr:subjectMap
+    [ rr:class prov:Role; rr:template "http://example.org/Role/{_recordId}" ].
+tri:https-w3id-org-nfdi4ing-profiles-cf30a8b0-e6e9-4349-9376-1552e1930d3d-airtable-apphvolecwij9txpl-tblhnhy9kan5ka3cr
+    a rr:TriplesMap;
+    rml:logicalSource
+    [ rml:referenceFormulation ql:CSV; rml:source "sources/E_Sources.csv" ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap
+                [ rml:reference "Date visited"; rr:datatype xsd:date ];
+                rr:predicate schema:dateModified
+            ],
+        [ rr:objectMap [ rml:reference "Name" ]; rr:predicate schema:name ],
+            [
+                rr:objectMap [ rml:reference "URL"; rr:datatype xsd:anyURI ];
+                rr:predicate schema:url
+            ];
+    rr:subjectMap
+            [
+                rr:class rdfs:Resource;
+                rr:template "http://example.org/Resource/{_recordId}"
+            ].
+tri:https-w3id-org-nfdi4ing-profiles-e65fc010-5fe6-4d74-9333-8601c31dde5d-airtable-apphvolecwij9txpl-tblhjngkvkvnpdckc
+    a rr:TriplesMap;
+    rml:logicalSource
+            [
+                rml:referenceFormulation ql:CSV;
+                rml:source "sources/L_Buildings_Organizations_Roles.csv"
+            ];
+    rr:predicateObjectMap
+            [
+                rr:objectMap
+                        [
+                            rr:template "http://example.org/Role/{Roles}";
+                            rr:termType rr:IRI
+                        ];
+                rr:predicate dcat:hadRole
+            ],
+            [
+                rr:objectMap
+                        [
+                            rr:template
+                            "http://example.org/Organisation/{Organization}";
+                            rr:termType rr:IRI
+                        ];
+                rr:predicate prov:agent
+            ];
+    rr:subjectMap
+            [
+                rr:template
+                    "http://example.org/e65fc010-5fe6-4d74-9333-8601c31dde5d/{_recordId}"
+            ].

@@ -33,7 +33,7 @@ import InputText from 'primevue/inputtext'
 import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
-import SubjectDetailDialog from '@/components/browse/SubjectDetailDialog.vue'
+import SubjectDetailDialog from '@/features/browse/components/SubjectDetailDialog.vue'
 
 const shapesStore = useShapesStore()
 const dataStore = useDataStore()

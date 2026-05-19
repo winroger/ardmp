@@ -3,6 +3,11 @@ import { ApplicationProfile, parseShaclProfile } from '@/domain/NodeShape'
 import { airtableSource, csvSource, nodeOutputSource } from '@/test/dataSources'
 import { MappingState } from '@/domain/Mapping'
 import { serializeMappingAsRml } from '@/services/export/rmlSerializer'
+import {
+  createMinimalExportMapping,
+  createMinimalExportProfile,
+  createMinimalExportSource,
+} from '@/services/__tests__/minimalExportFixture'
 
 const FK_SHAPES = `
 @prefix sh:  <http://www.w3.org/ns/shacl#> .
@@ -133,6 +138,28 @@ describe('rmlSerializer', () => {
 
     expect(ttl).toContain('rr:template "POINT({lng} {lat})"')
     expect(ttl).toContain('rr:termType rr:Literal')
+  })
+
+  it('serializes the expected minimal export RML fixture structure', async () => {
+    const ap = new ApplicationProfile()
+    const profile = createMinimalExportProfile()
+    ap.upsert(profile)
+
+    const ttl = await serializeMappingAsRml(
+      ap,
+      createMinimalExportMapping(),
+      [createMinimalExportSource()],
+    )
+
+    expect(ttl).toContain('rml:source "sources/source_csv.csv"')
+    expect(ttl).toContain('rr:template "http://example.org/Building/{id}"')
+    expect(ttl).toContain('rml:reference "Name"')
+    expect(ttl).toContain('rr:datatype xsd:gYear')
+    expect(ttl).toContain('rr:termType rr:IRI')
+    expect(ttl).toMatch(/rr:predicate\s+\w*:name/)
+    expect(ttl).toMatch(/rr:predicate\s+\w*:year/)
+    expect(ttl).toContain('rr:predicate schema:url')
+    expect(ttl).toMatch(/rr:class\s+\w*:Building/)
   })
 })
 

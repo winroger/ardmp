@@ -10,10 +10,12 @@ import { useDataStore } from '@/stores/dataStore'
 import { useMetadataStore } from '@/stores/metadataStore'
 import { useMappingStore } from '@/stores/mappingStore'
 import { useProjectStore } from '@/stores/projectStore'
-import { buildRoCratePackage, downloadBlob } from '@/services/export/exportService'
+import { downloadBlob } from '@/services/export/exportService'
 import { useDatasetMetadataWorkflow } from '@/features/export/useDatasetMetadataWorkflow'
 import { useShaclFormViewer, type ShaclFormElement } from '@/features/shacl/useShaclFormViewer'
 import { useShapesStore } from '@/stores/shapesStore'
+import { createPipelineState } from '@/services/pipeline/createPipelineState'
+import { buildRoCrateFromPipelineState } from '@/services/pipeline/buildRoCrateFromPipelineState'
 
 type SerializableShaclFormElement = ShaclFormElement & {
   serialize?: (format?: string) => string
@@ -82,14 +84,15 @@ async function exportCrate(): Promise<void> {
 
   isExporting.value = true
   try {
-    const result = await buildRoCratePackage({
+    const pipelineState = createPipelineState({
       projectTitle: metadataSummary.value.name ?? projectStore.project.title,
       ap: shapesStore.ap,
       profiles: shapesStore.profiles,
       sources: sources.value,
-      mapping: mappingStore.state,
+      mappingEdges: mappingStore.state.edges,
       metadataTurtle: metadataStore.getCombinedMetadataTurtle(),
     })
+    const result = await buildRoCrateFromPipelineState(pipelineState)
     downloadBlob(result.blob, result.filename)
     toast.add({
       severity: 'success',

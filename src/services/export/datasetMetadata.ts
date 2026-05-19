@@ -23,6 +23,7 @@ const DCAT_DATASET = namedNode('http://www.w3.org/ns/dcat#Dataset')
 const DCAT_HAD_ROLE = namedNode('http://www.w3.org/ns/dcat#hadRole')
 const DCT_TITLE = namedNode('http://purl.org/dc/terms/title')
 const DCT_DESCRIPTION = namedNode('http://purl.org/dc/terms/description')
+const DCT_IDENTIFIER = namedNode('http://purl.org/dc/terms/identifier')
 const DCT_ISSUED = namedNode('http://purl.org/dc/terms/issued')
 const DCT_LICENSE = namedNode('http://purl.org/dc/terms/license')
 const PROV_QUALIFIED_ATTRIBUTION = namedNode('http://www.w3.org/ns/prov#qualifiedAttribution')
@@ -31,6 +32,7 @@ const FOAF_NAME = namedNode('http://xmlns.com/foaf/0.1/name')
 const FOAF_PERSON = 'http://xmlns.com/foaf/0.1/Person'
 const FOAF_ORGANIZATION = 'http://xmlns.com/foaf/0.1/Organisation'
 const SCHEMA_NAME = namedNode('http://schema.org/name')
+const SCHEMA_IDENTIFIER = namedNode('http://schema.org/identifier')
 const SCHEMA_URL = namedNode('http://schema.org/url')
 const SCHEMA_ADDRESS = namedNode('http://schema.org/Address')
 const SCHEMA_PERSON = 'http://schema.org/Person'
@@ -103,8 +105,9 @@ function extractAgents(store: Store, datasetSubject: RdfTerm): DatasetMetadataAg
     const role = roleTerm
       ? firstTermValue(store, roleTerm, RDFS_LABEL) ?? roleTerm.value
       : undefined
+    const identifier = preferredAgentIdentifier(store, agent)
     const url = firstNamedNodeValue(store, agent, SCHEMA_URL) ?? firstTermValue(store, agent, SCHEMA_ADDRESS)
-    const id = agent.termType === 'NamedNode' ? agent.value : `#metadata-agent-${index}`
+    const id = identifier ?? (agent.termType === 'NamedNode' ? agent.value : `#metadata-agent-${index}`)
 
     agents.set(id, {
       id,
@@ -116,6 +119,18 @@ function extractAgents(store: Store, datasetSubject: RdfTerm): DatasetMetadataAg
   })
 
   return Array.from(agents.values())
+}
+
+function preferredAgentIdentifier(store: Store, agent: RdfTerm): string | undefined {
+  const identifier = firstTermValue(store, agent, DCT_IDENTIFIER)
+    ?? firstTermValue(store, agent, SCHEMA_IDENTIFIER)
+
+  if (!identifier) return undefined
+  return looksLikeIri(identifier) ? identifier : undefined
+}
+
+function looksLikeIri(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(value)
 }
 
 function detectAgentType(store: Store, agent: RdfTerm): 'Person' | 'Organization' {

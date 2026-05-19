@@ -2,7 +2,7 @@
 import { RouterView } from 'vue-router'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
-import AppShell from '@/components/shell/AppShell.vue'
+import AppShell from '@/components/AppShell.vue'
 </script>
 
 <template>

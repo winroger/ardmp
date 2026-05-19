@@ -3,6 +3,11 @@ import { ApplicationProfile, parseShaclProfile } from '@/domain/NodeShape'
 import { MappingState } from '@/domain/Mapping'
 import { airtableSource, csvSource } from '@/test/dataSources'
 import { generateRdf, serializeGraph } from '@/services/rdf/rdfGenerator'
+import {
+  createMinimalExportMapping,
+  createMinimalExportProfile,
+  createMinimalExportSource,
+} from '@/services/__tests__/minimalExportFixture'
 
 const SHAPE = `
 @prefix sh:  <http://www.w3.org/ns/shacl#> .
@@ -258,6 +263,27 @@ describe('rdfGenerator', () => {
     expect(ttl).toContain('@prefix www: <https://www.geonames.org/>.')
     expect(ttl).toContain('dct:identifier www:5746545')
     expect(ttl).toContain('POINT(-122.67621 45.52345)')
+  })
+
+  it('generates the expected minimal export RDF fixture triples', async () => {
+    const ap = new ApplicationProfile()
+    const profile = createMinimalExportProfile()
+    ap.upsert(profile)
+
+    const result = generateRdf(ap, createMinimalExportMapping(), [createMinimalExportSource()])
+    const ttl = await serializeGraph(result.store, 'text/turtle')
+
+    expect(result.subjectCount).toBe(2)
+    expect(result.tripleCount).toBe(8)
+    expect(ttl).toContain('http://example.org/Building/')
+    expect(ttl).toContain('Building A')
+    expect(ttl).toContain('Building B')
+    expect(ttl).toContain('2020')
+    expect(ttl).toContain('2021')
+    expect(ttl).toContain('schema:url')
+    expect(ttl).toContain('building-a')
+    expect(ttl).toContain('building-b')
+    expect(ttl).toContain('xsd:gYear')
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRoCrateMetadata } from '@/services/export/roCrate'
+import { buildRoCrateMetadata } from '@/core/export/roCrate'
 
 describe('buildRoCrateMetadata', () => {
   it('produces a valid RO-Crate 1.2 descriptor with metadata file + root dataset', () => {
