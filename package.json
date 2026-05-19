@@ -23,6 +23,7 @@
     "@vue-flow/controls": "^1.1.2",
     "@vue-flow/core": "^1.41.6",
     "@vue-flow/minimap": "^1.5.2",
+    "cytoscape": "^3.33.4",
     "geonames.js": "^3.0.6",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
