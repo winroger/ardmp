@@ -23,8 +23,10 @@ function navigate(modeKey: AppModeKey): void {
   <div class="app-shell">
     <header class="app-shell__header">
       <div class="app-shell__brand">
-        <span class="app-shell__eyebrow">ARDMP</span>
-        <h1>Architectural Research Data Mapping Pipeline</h1>
+        <i class="pi pi-sitemap app-shell__brand-icon" />
+        <div class="app-shell__brand-copy">
+          <h1>Architectural RDM-Pipeline</h1>
+        </div>
       </div>
 
       <nav class="app-shell__nav" aria-label="Application sections">
@@ -49,7 +51,7 @@ function navigate(modeKey: AppModeKey): void {
 
 <style scoped lang="scss">
 .app-shell {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
@@ -68,6 +70,18 @@ function navigate(modeKey: AppModeKey): void {
 
 .app-shell__brand {
   display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-shell__brand-icon {
+  font-size: 1.5rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.app-shell__brand-copy {
+  display: flex;
   flex-direction: column;
   gap: 4px;
 
@@ -76,14 +90,6 @@ function navigate(modeKey: AppModeKey): void {
     font-size: 1.3rem;
     font-weight: 600;
   }
-}
-
-.app-shell__eyebrow {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
 }
 
 .app-shell__nav {
@@ -95,6 +101,7 @@ function navigate(modeKey: AppModeKey): void {
 .app-shell__content {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {

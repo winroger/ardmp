@@ -16,6 +16,7 @@ import { useDataStore } from '@/stores/dataStore'
 import { useMetadataStore } from '@/stores/metadataStore'
 import { useShapesStore } from '@/stores/shapesStore'
 import { useMappingStore } from '@/stores/mappingStore'
+import { useProjectStore } from '@/stores/projectStore'
 import { useMappingValidation } from '@/features/mapping/useMappingValidation'
 import { useCanvasGraph } from '@/features/mapping/useCanvasGraph'
 import { useCanvasConnections } from '@/features/mapping/useCanvasConnections'
@@ -36,29 +37,12 @@ const data = useDataStore()
 const metadata = useMetadataStore()
 const shapes = useShapesStore()
 const mapping = useMappingStore()
+const project = useProjectStore()
 const toast = useToast()
 const confirm = useConfirm()
 const { sources } = storeToRefs(data)
 const { nodeShapes, profiles, isResolvingImports } = storeToRefs(shapes)
 const { canvasShapes } = storeToRefs(shapes)
-
-const {
-  schemaInputRef,
-  activeSetupDialogDefinition,
-  activeSetupDialogVisible,
-  activeSetupDialogKey,
-  activeSetupDialogProps,
-  menuItems,
-  onSchemaFiles,
-  closeSetupDialog,
-  openSetupDialog,
-} = useCanvasSetupMenu({
-  dataStore: data,
-  shapesStore: shapes,
-  mappingStore: mapping,
-  toast,
-  confirm,
-})
 
 const {
   tablePreviewOpen,
@@ -85,6 +69,14 @@ const {
   toast,
 })
 
+function resetCanvasUiState(): void {
+  closeSetupDialog()
+  tablePreviewOpen.value = false
+  pairedSourcePreviewOpen.value = false
+  shapePreviewOpen.value = false
+  validationSidebarOpen.value = false
+}
+
 // ---------- SHACL validation ----------
 const {
   validationSidebarOpen,
@@ -101,6 +93,27 @@ const {
   mappingState: mapping.state,
   sources,
   getCombinedMetadataTurtle: () => metadata.getCombinedMetadataTurtle(),
+})
+
+const {
+  schemaInputRef,
+  activeSetupDialogDefinition,
+  activeSetupDialogVisible,
+  activeSetupDialogKey,
+  activeSetupDialogProps,
+  menuItems,
+  onSchemaFiles,
+  closeSetupDialog,
+  openSetupDialog,
+} = useCanvasSetupMenu({
+  dataStore: data,
+  metadataStore: metadata,
+  shapesStore: shapes,
+  mappingStore: mapping,
+  projectStore: project,
+  toast,
+  confirm,
+  resetUiState: resetCanvasUiState,
 })
 
 const { nodes, edges, nodeTypes } = useCanvasGraph({
@@ -147,14 +160,15 @@ const hasNothing = computed(() =>
       <div v-if="hasNothing" class="empty-state">
         <i class="pi pi-plus-circle" />
         <h2>Add components</h2>
-        <p>Use the top menu to add <strong>Source Data</strong>, <strong>Target Schema</strong>, <strong>Enrichment</strong>, and <strong>Transformation</strong>.</p>
+        <p>Use the top menu to add <strong>Source Data</strong>, <strong>Target Schema</strong>, <strong>Enrichment</strong>, and <strong>Transformation</strong>, or open <strong>Options</strong> to load the built-in example.</p>
       </div>
       <VueFlow
         v-else
+        class="mapping-canvas"
         v-model:nodes="nodes"
         v-model:edges="edges"
         :node-types="nodeTypes"
-        :default-edge-options="{ animated: false, type: 'bezier' }"
+        :default-edge-options="{ animated: false, type: 'default' }"
         fit-view-on-init
       >
         <Background pattern-color="var(--color-border)" :gap="20" />
@@ -228,6 +242,11 @@ const hasNothing = computed(() =>
   flex: 1;
   position: relative;
   overflow: hidden;
+}
+
+.mapping-canvas {
+  width: 100%;
+  height: 100%;
 }
 
 .empty-state {

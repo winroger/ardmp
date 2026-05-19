@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "project": {
+    "title": "Minimal Linked CSV Example",
+    "createdAt": "2026-05-19T00:00:00.000Z"
+  },
+  "sources": [
+    {
+      "id": "buildings.csv",
+      "name": "buildings.csv",
+      "kind": "tabular",
+      "role": "source",
+      "origin": {
+        "kind": "uploaded-file",
+        "filename": "buildings.csv",
+        "mediaType": "text/csv"
+      },
+      "headers": [
+        "PreferredName",
+        "DateOfProduction",
+        "Location"
+      ],
+      "rows": [
+        [
+          "Timber Hall",
+          2020,
+          [
+            "recLOCATION000001"
+          ]
+        ],
+        [
+          "Harbor House",
+          2021,
+          [
+            "recLOCATION000002"
+          ]
+        ]
+      ],
+      "recordIds": [
+        "recBUILDING000001",
+        "recBUILDING000002"
+      ],
+      "hidden": false
+    },
+    {
+      "id": "locations.csv",
+      "name": "locations.csv",
+      "kind": "tabular",
+      "role": "source",
+      "origin": {
+        "kind": "uploaded-file",
+        "filename": "locations.csv",
+        "mediaType": "text/csv"
+      },
+      "headers": [
+        "Label",
+        "WKT"
+      ],
+      "rows": [
+        [
+          "Vancouver",
+          "POINT(-123.1207 49.2827)"
+        ],
+        [
+          "Portland",
+          "POINT(-122.6765 45.5231)"
+        ]
+      ],
+      "recordIds": [
+        "recLOCATION000001",
+        "recLOCATION000002"
+      ],
+      "hidden": false
+    }
+  ],
+  "shapeProfiles": [
+    {
+      "iri": "http://example.org/showcase-profile",
+      "source": "showcase-profile.ttl",
+      "origin": "embedded",
+      "rawTurtle": "@prefix sh: <http://www.w3.org/ns/shacl#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix dct: <http://purl.org/dc/terms/> .\n@prefix gndo: <https://d-nb.info/standards/elementset/gnd#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix geo: <http://www.opengis.net/ont/geosparql#> .\n@prefix ex: <http://example.org/> .\n\nex:LocationShape a sh:NodeShape ;\n  dct:title \"Location\" ;\n  rdfs:label \"Location\"@en ;\n  sh:targetClass dct:Location ;\n  sh:property [\n    sh:name \"Coordinates\" ;\n    sh:path geo:asWKT ;\n    sh:datatype geo:wktLiteral ;\n    sh:minCount 1 ;\n    sh:maxCount 1\n  ] ;\n  sh:property [\n    sh:name \"Place label\" ;\n    sh:path rdfs:label ;\n    sh:datatype xsd:string ;\n    sh:minCount 1 ;\n    sh:maxCount 1\n  ] .\n\nex:BuildingShape a sh:NodeShape ;\n  dct:title \"Building\" ;\n  rdfs:label \"Building\"@en ;\n  sh:targetClass gndo:BuildingOrMemorial ;\n  sh:property [\n    sh:name \"Preferred name\" ;\n    sh:path gndo:preferredName ;\n    sh:datatype xsd:string ;\n    sh:minCount 1 ;\n    sh:maxCount 1\n  ] ;\n  sh:property [\n    sh:name \"Date of production\" ;\n    sh:path gndo:dateOfProduction ;\n    sh:datatype xsd:gYear ;\n    sh:maxCount 1\n  ] ;\n  sh:property [\n    sh:name \"Location\" ;\n    sh:path dct:spatial ;\n    sh:node ex:LocationShape ;\n    sh:minCount 1 ;\n    sh:maxCount 1\n  ] ."
+    }
+  ],
+  "metadataProfiles": [
+    {
+      "iri": "https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6",
+      "source": "4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6.ttl",
+      "origin": "embedded",
+      "rawTurtle": "@base <https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6>.\n\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.\n\n_:b12518 rdf:first <http://creativecommons.org/licenses/by/4.0/>;\n         rdf:rest _:b12519.\n_:b12519 rdf:first <http://creativecommons.org/licenses/by-nc/4.0/>;\n         rdf:rest rdf:nil.\n_:b12521 rdf:first \"en\";\n         rdf:rest _:b12522.\n_:b12522 rdf:first \"de\";\n         rdf:rest rdf:nil.\n_:b12524 rdf:first \"en\";\n         rdf:rest _:b12525.\n_:b12525 rdf:first \"de\";\n         rdf:rest rdf:nil.\n<http://creativecommons.org/licenses/by-nc/4.0/> rdfs:label \"CC-BY-NC\".\n<http://creativecommons.org/licenses/by/4.0/> rdfs:label \"CC-BY\".\n<https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6> <http://purl.org/dc/terms/created> \"2024-07-30\"^^xsd:date;\n                                                                          <http://purl.org/dc/terms/creator> \"Stephan Tittel\";\n                                                                          <http://purl.org/dc/terms/description> \"RO-kit base dataset with minimal metadata fields\"@en,\n                                                                                                                 \"RO-kit Basisdatensatz mit minimalen Metadatenfeldern\"@de;\n                                                                          <http://purl.org/dc/terms/license> <http://spdx.org/licenses/CC0-1.0>;\n                                                                          <http://purl.org/dc/terms/subject> <https://github.com/tibonto/dfgfo/410-01>;\n                                                                          <http://purl.org/dc/terms/title> \"RO-kit Datensatz\"@de,\n                                                                                                           \"RO-kit dataset\"@en;\n                                                                          a <http://www.w3.org/ns/shacl#NodeShape>;\n                                                                          <http://www.w3.org/2002/07/owl#imports> <https://w3id.org/nfdi4ing/profiles/7ad5af4d-e6c2-4365-b314-a707176aa362>;\n                                                                          <http://www.w3.org/ns/shacl#closed> false;\n                                                                          <http://www.w3.org/ns/shacl#property> [<http://www.w3.org/ns/shacl#order> 5  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Involved persons/organisations\"@en ; \n                                                                                                                 <http://www.w3.org/ns/shacl#node> <https://w3id.org/nfdi4ing/profiles/7ad5af4d-e6c2-4365-b314-a707176aa362> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#path> <http://www.w3.org/ns/prov#qualifiedAttribution> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Beteiligte Personen/Organisationen\"@de ; \n                                                                                                                 <http://www.w3.org/ns/shacl#name> \"Attribution\"],\n                                                                                                                [<http://www.w3.org/ns/shacl#path> <http://purl.org/dc/terms/issued> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#datatype> xsd:date ; \n                                                                                                                 <http://www.w3.org/ns/shacl#maxCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#order> 4  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#minCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Datum der Herausgabe des Datensatzes\"@de ; \n                                                                                                                 <http://www.w3.org/ns/shacl#name> \"Issued\" ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Date this dataset has been issued\"@en],\n                                                                                                                [<http://www.w3.org/ns/shacl#maxCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#name> \"License\" ; \n                                                                                                                 <http://www.w3.org/ns/shacl#nodeKind> <http://www.w3.org/ns/shacl#IRI> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#order> 3  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#minCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#in> _:b12518 ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Lizenz des Datensatzes\"@de ; \n                                                                                                                 <http://www.w3.org/ns/shacl#path> <http://purl.org/dc/terms/license> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"License of the dataset\"@en],\n                                                                                                                [<http://datashapes.org/dash#singleLine> false ; \n                                                                                                                 <http://www.w3.org/ns/shacl#minCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#datatype> rdf:langString ; \n                                                                                                                 <http://www.w3.org/ns/shacl#languageIn> _:b12521 ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Beschreibung des Datensatzes\"@de ; \n                                                                                                                 <http://www.w3.org/ns/shacl#maxCount> 2  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#name> \"Description\" ; \n                                                                                                                 <http://www.w3.org/ns/shacl#uniqueLang> true ; \n                                                                                                                 <http://www.w3.org/ns/shacl#order> 2  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#path> <http://purl.org/dc/terms/description> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Description of the dataset\"@en],\n                                                                                                                [<http://www.w3.org/ns/shacl#datatype> rdf:langString ; \n                                                                                                                 <http://www.w3.org/ns/shacl#minCount> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#languageIn> _:b12524 ; \n                                                                                                                 <http://www.w3.org/ns/shacl#maxCount> 2  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#uniqueLang> true ; \n                                                                                                                 <http://www.w3.org/ns/shacl#order> 1  ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Name of the dataset\"@en ; \n                                                                                                                 <http://www.w3.org/ns/shacl#path> <http://purl.org/dc/terms/title> ; \n                                                                                                                 <http://www.w3.org/ns/shacl#name> \"Name\" ; \n                                                                                                                 <http://www.w3.org/ns/shacl#description> \"Name des Datensatzes\"@de];\n                                                                          <http://www.w3.org/ns/shacl#targetClass> <http://www.w3.org/ns/dcat#Dataset>.\n"
+    }
+  ],
+  "metadataRootIris": [
+    "https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6"
+  ],
+  "metadataTurtle": {
+    "https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6": "@prefix dcat: <http://www.w3.org/ns/dcat#>.\n@prefix dct: <http://purl.org/dc/terms/>.\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.\n\n<urn:ardmp:metadata:dataset> a dcat:Dataset;\n    dct:title \"Example Linked Building Dataset\"@en;\n    dct:description \"Minimal showcase dataset demonstrating buildings linked to structured location records.\"@en;\n    dct:license <http://creativecommons.org/licenses/by/4.0/>;\n    dct:issued \"2026-05-19\"^^xsd:date;\n    dct:conformsTo <https://w3id.org/nfdi4ing/profiles/4a5d4526-34d4-4b00-8f8f-4b13dd48e6d6>."
+  },
+  "mapping": {
+    "edges": [
+      {
+        "sourceId": "buildings.csv",
+        "sourceHeader": "PreferredName",
+        "shapeIri": "http://example.org/BuildingShape",
+        "propertyPath": "https://d-nb.info/standards/elementset/gnd#preferredName",
+        "source": {
+          "kind": "table-column"
+        }
+      },
+      {
+        "sourceId": "buildings.csv",
+        "sourceHeader": "DateOfProduction",
+        "shapeIri": "http://example.org/BuildingShape",
+        "propertyPath": "https://d-nb.info/standards/elementset/gnd#dateOfProduction",
+        "source": {
+          "kind": "table-column"
+        }
+      },
+      {
+        "sourceId": "buildings.csv",
+        "sourceHeader": "Location",
+        "shapeIri": "http://example.org/BuildingShape",
+        "propertyPath": "http://purl.org/dc/terms/spatial",
+        "source": {
+          "kind": "table-column"
+        }
+      },
+      {
+        "sourceId": "locations.csv",
+        "sourceHeader": "Label",
+        "shapeIri": "http://example.org/LocationShape",
+        "propertyPath": "http://www.w3.org/2000/01/rdf-schema#label",
+        "source": {
+          "kind": "table-column"
+        }
+      },
+      {
+        "sourceId": "locations.csv",
+        "sourceHeader": "WKT",
+        "shapeIri": "http://example.org/LocationShape",
+        "propertyPath": "http://www.opengis.net/ont/geosparql#asWKT",
+        "source": {
+          "kind": "table-column"
+        }
+      }
+    ],
+    "extensionState": {}
+  }
+}

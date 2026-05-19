@@ -1,0 +1,51 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix gndo: <https://d-nb.info/standards/elementset/gnd#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix ex: <http://example.org/> .
+
+ex:LocationShape a sh:NodeShape ;
+  dct:title "Location" ;
+  rdfs:label "Location"@en ;
+  sh:targetClass dct:Location ;
+  sh:property [
+    sh:name "Coordinates" ;
+    sh:path geo:asWKT ;
+    sh:datatype geo:wktLiteral ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] ;
+  sh:property [
+    sh:name "Place label" ;
+    sh:path rdfs:label ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] .
+
+ex:BuildingShape a sh:NodeShape ;
+  dct:title "Building" ;
+  rdfs:label "Building"@en ;
+  sh:targetClass gndo:BuildingOrMemorial ;
+  sh:property [
+    sh:name "Preferred name" ;
+    sh:path gndo:preferredName ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] ;
+  sh:property [
+    sh:name "Date of production" ;
+    sh:path gndo:dateOfProduction ;
+    sh:datatype xsd:gYear ;
+    sh:maxCount 1
+  ] ;
+  sh:property [
+    sh:name "Location" ;
+    sh:path dct:spatial ;
+    sh:node ex:LocationShape ;
+    sh:minCount 1 ;
+    sh:maxCount 1
+  ] .
