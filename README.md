@@ -17,6 +17,7 @@ or maintaining one-off conversion scripts.
 
 - Load SHACL profiles in Turtle format and resolve `owl:imports`.
 - Import source data from CSV files or Airtable tables.
+- Load a built-in showcase project from the mapping view for demonstrations or onboarding.
 - Build mappings visually on a Vue Flow canvas by connecting source columns to
   SHACL property shapes.
 - Detect and display table-to-table references from Airtable-style linked
@@ -46,15 +47,16 @@ handover.
 ## Main Workflow
 
 1. Open the mapping view.
-2. Add source data, for example a CSV file or an Airtable base.
-3. Add a target schema by uploading a SHACL profile or loading an embedded
+2. Optionally load the built-in showcase project from `Options` for a ready-made example.
+3. Add source data, for example a CSV file or an Airtable base.
+4. Add a target schema by uploading a SHACL profile or loading an embedded
    profile.
-4. Connect table columns to SHACL properties on the canvas.
-5. Optionally add enrichment or transformation nodes.
-6. Review generated RDF in the browse view.
-7. Check validation results.
-8. Complete dataset metadata in the export view.
-9. Export the RO-Crate ZIP.
+5. Connect table columns to SHACL properties on the canvas.
+6. Optionally add enrichment or transformation nodes.
+7. Review generated RDF in the browse view.
+8. Check validation results.
+9. Complete dataset metadata in the export view.
+10. Export the RO-Crate ZIP.
 
 ## Technology
 

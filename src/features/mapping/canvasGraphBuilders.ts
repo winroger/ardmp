@@ -9,7 +9,7 @@ import { detectLinkedColumns } from '@/services/mapping/linkDetector'
 export function applyDefaultExtensionEdgeStyle(edge: Omit<Edge, 'type'> & { type?: string }): Edge {
   return {
     ...edge,
-    type: edge.type ?? 'bezier',
+    type: edge.type ?? 'default',
     style: {
       ...CANVAS_EDGE_STYLES.primary,
       ...(edge.style ?? {}),
@@ -62,7 +62,7 @@ export function buildCanvasMappingEdges(
       target,
       targetHandle: `p:${edge.propertyPath}`,
       animated: true,
-      type: 'bezier',
+      type: 'default',
       style: CANVAS_EDGE_STYLES.primary,
       data: {
         isFkProp: Boolean(targetProperty?.node),
@@ -94,7 +94,7 @@ function buildTableRelationEdges(visibleSources: DataSource[]): Edge[] {
         sourceHandle: `h:${linkedColumn.header}`,
         target: `src:${linkedColumn.bestTargetSourceId}`,
         targetHandle: 'table-parent',
-        type: 'bezier',
+        type: 'default',
         animated: false,
         style: CANVAS_EDGE_STYLES.structural,
       })
@@ -118,7 +118,7 @@ function buildShapeReferenceEdges(shapes: NodeShape[]): Edge[] {
         sourceHandle: `ref:${property.path.value}`,
         target: `shape:${property.node.value}`,
         targetHandle: 'shape-header',
-        type: 'bezier',
+        type: 'default',
         animated: false,
         style: CANVAS_EDGE_STYLES.structural,
       })

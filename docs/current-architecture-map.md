@@ -32,6 +32,7 @@ The runtime state is currently coordinated through Pinia stores:
   - dataset metadata values and Turtle assembly
 - `src/stores/projectStore.ts`
   - project title and higher-level project state coordination
+  - whole-project reset and snapshot restore boundary
 
 ## Main Services
 
@@ -47,6 +48,7 @@ The most important service areas today are:
   - SHACL validation and result mapping
 - `src/services/project`
   - snapshot normalization and project persistence helpers
+  - embedded showcase project loading
 - `src/services/mapping`
   - graph layout
   - mapping semantics
@@ -66,6 +68,8 @@ Relevant pieces:
   - connection and deletion behavior
 - `src/features/mapping/mappingExtensionRegistry.ts`
   - app-internal registry for current mapping modules
+- `src/services/project/loadEmbeddedExampleProject.ts`
+  - app-internal loader for the built-in showcase snapshot
 
 Current packaged mapping modules include:
 
@@ -100,6 +104,15 @@ High-level flow:
    - RML mapping Turtle
    - RO-Crate metadata and package content
 5. The package is downloaded/exported through the UI.
+
+The mapping view also has one app-internal restore path outside the export flow:
+
+```text
+embedded showcase snapshot
+  -> projectStore.restoreSnapshot(...)
+  -> stores/runtime state
+  -> mapping, browse, export views
+```
 
 ## Current Central Export State
 

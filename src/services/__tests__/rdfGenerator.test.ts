@@ -8,6 +8,8 @@ import {
   createMinimalExportProfile,
   createMinimalExportSource,
 } from '@/services/__tests__/minimalExportFixture'
+import { getEmbeddedExampleProjectSnapshot } from '@/services/project/loadEmbeddedExampleProject'
+import { restoreDataSourcesFromSnapshot } from '@/services/project/projectSnapshot'
 
 const SHAPE = `
 @prefix sh:  <http://www.w3.org/ns/shacl#> .
@@ -158,6 +160,24 @@ describe('rdfGenerator', () => {
     // (the array field was expanded into two separate triples)
     expect(ttl).toContain('Per:recA')
     expect(ttl).toContain('Per:recB')
+  })
+
+  it('emits linked CSV location references as proper related resources', async () => {
+    const snapshot = getEmbeddedExampleProjectSnapshot()
+    const ap = new ApplicationProfile()
+    ap.upsert(parseShaclProfile(snapshot.shapeProfiles[0].rawTurtle, snapshot.shapeProfiles[0].source, 'embedded', snapshot.shapeProfiles[0].iri))
+
+    const mapping = new MappingState()
+    for (const edge of snapshot.mapping.edges) {
+      mapping.addOrReplace(edge)
+    }
+
+    const result = generateRdf(ap, mapping, restoreDataSourcesFromSnapshot(snapshot.sources))
+    const ttl = await serializeGraph(result.store, 'text/turtle')
+
+    expect(ttl).toContain('http://example.org/Location/')
+    expect(ttl).toContain('Vancouver')
+    expect(ttl).not.toContain('%2C')
   })
 
   it('emits sh:IRI properties as RDF IRIs instead of string literals', () => {

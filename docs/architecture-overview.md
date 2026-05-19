@@ -40,6 +40,9 @@ flowchart TD
     BrowseView --> BrowseFeature["features/browse"]
     BrowseView --> BrowseDialog["features/browse/components/SubjectDetailDialog.vue"]
     ExportView --> ShaclFeature["features/shacl"]
+    AppView --> ExampleLoader["services/project/loadEmbeddedExampleProject.ts"]
+    ExampleLoader --> ExampleAsset["assets/examples/showcase-project.json"]
+    ExampleLoader --> ProjectStore["stores/projectStore.ts"]
 
     MappingFeature --> MappingRegistry["mappingExtensionRegistry.ts"]
     MappingFeature --> CanvasGraph["useCanvasGraph.ts"]
@@ -104,5 +107,13 @@ The project is no longer best described as one big Vue app with helpers. It now 
 - stores as runtime coordination
 - services as business logic and export logic
 - `PipelineState` as the explicit export seam
+
+There is now also one embedded project snapshot for onboarding and demos:
+
+- `src/assets/examples/showcase-project.json`
+- loaded through `src/services/project/loadEmbeddedExampleProject.ts`
+- restored via `projectStore.restoreSnapshot(...)`
+
+That keeps the showcase path inside the same project-state boundary as normal save and restore behavior.
 
 That is the structure new contributors should learn first.

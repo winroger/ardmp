@@ -79,7 +79,7 @@ export const airtableModule = createMappingExtensionModule({
           sourceHandle: 'airtable-out',
           target: `src:${source.id}`,
           targetHandle: 'table-parent',
-          type: 'bezier',
+          type: 'default',
           animated: false,
           style: { ...CANVAS_EDGE_STYLES.structural, opacity: 0 },
         })),

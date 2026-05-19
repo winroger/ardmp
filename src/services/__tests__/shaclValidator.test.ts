@@ -3,6 +3,8 @@ import { ApplicationProfile, parseShaclProfile } from '@/domain/NodeShape'
 import { MappingState } from '@/domain/Mapping'
 import { csvSource } from '@/test/dataSources'
 import { validateMapping } from '@/services/validation/shaclValidator'
+import { getEmbeddedExampleProjectSnapshot } from '@/services/project/loadEmbeddedExampleProject'
+import { restoreDataSourcesFromSnapshot } from '@/services/project/projectSnapshot'
 
 const SHAPE = `
 @prefix sh:  <http://www.w3.org/ns/shacl#> .
@@ -108,6 +110,24 @@ describe('shaclValidator', () => {
     const result = await validateMapping(ap, mapping, [csv])
     const warnings = result.violations.filter(v => v.constraintComponent === 'MalformedShapeConstraint')
     expect(warnings.length).toBe(1)
+    expect(result.isValid).toBe(true)
+  })
+
+  it('validates the minimal embedded showcase example without violations', async () => {
+    const snapshot = getEmbeddedExampleProjectSnapshot()
+    const ap = new ApplicationProfile()
+    for (const profile of snapshot.shapeProfiles) {
+      ap.upsert(parseShaclProfile(profile.rawTurtle, profile.source, 'embedded', profile.iri))
+    }
+
+    const mapping = new MappingState()
+    for (const edge of snapshot.mapping.edges) {
+      mapping.addOrReplace(edge)
+    }
+
+    const result = await validateMapping(ap, mapping, restoreDataSourcesFromSnapshot(snapshot.sources))
+
+    expect(result.violations).toHaveLength(0)
     expect(result.isValid).toBe(true)
   })
 })

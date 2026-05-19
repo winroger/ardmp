@@ -6,6 +6,7 @@ import { useMetadataStore } from '@/stores/metadataStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { useShapesStore } from '@/stores/shapesStore'
 import { createAirtableDataSource } from '@/features/mapping/extensions/modules/source-data/airtable/workflow'
+import { getEmbeddedExampleProjectSnapshot } from '@/services/project/loadEmbeddedExampleProject'
 import {
   addGeoNamesNode,
   geoNamesNodes,
@@ -135,6 +136,40 @@ describe('projectStore snapshot persistence', () => {
 
     await project.clearSnapshot()
     expect(repository.clearSnapshot).toHaveBeenCalledTimes(1)
+  })
+
+  it('resets and restores the embedded showcase snapshot as one project boundary', () => {
+    const project = useProjectStore()
+    const data = useDataStore()
+    const shapes = useShapesStore()
+    const metadata = useMetadataStore()
+    const mapping = useMappingStore()
+    const snapshot = getEmbeddedExampleProjectSnapshot()
+
+    project.restoreSnapshot(snapshot)
+
+    expect(project.project.title).toBe(snapshot.project.title)
+    expect(data.sources).toHaveLength(snapshot.sources.length)
+    expect(shapes.profiles).toHaveLength(snapshot.shapeProfiles.length)
+    expect(metadata.rootIris).toHaveLength(snapshot.metadataRootIris.length)
+    expect(mapping.state.edges).toHaveLength(snapshot.mapping.edges.length)
+
+    project.reset()
+
+    expect(project.project.title).toBe('Untitled dataset')
+    expect(data.sources).toHaveLength(0)
+    expect(shapes.profiles).toHaveLength(0)
+    expect(metadata.rootIris).toHaveLength(0)
+    expect(metadata.getCombinedMetadataTurtle()).toBe('')
+    expect(mapping.state.edges).toHaveLength(0)
+
+    project.restoreSnapshot(snapshot)
+
+    expect(project.project.title).toBe(snapshot.project.title)
+    expect(data.sources).toHaveLength(snapshot.sources.length)
+    expect(shapes.profiles).toHaveLength(snapshot.shapeProfiles.length)
+    expect(metadata.rootIris).toHaveLength(snapshot.metadataRootIris.length)
+    expect(mapping.state.edges).toHaveLength(snapshot.mapping.edges.length)
   })
 })
 
