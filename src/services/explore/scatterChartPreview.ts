@@ -1,24 +1,7 @@
 import type { EChartsOption } from 'echarts'
 import type { ExploreChartDefinitionSnapshot } from '@/services/project/projectSnapshot'
-import type { ExploreDataframeColumnSnapshot } from '@/services/project/projectSnapshot'
 import type { ExploreDataframeModel } from '@/services/explore/exploreService'
-
-function stringValue(value: string | number | null | undefined, fallback = 'Unassigned'): string {
-  if (value === null || value === undefined || value === '') return fallback
-  return String(value)
-}
-
-function numericValue(value: string | number | null | undefined): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  if (typeof value !== 'string' || value.trim() === '') return null
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function fieldLabel(fields: readonly ExploreDataframeColumnSnapshot[], key: string | undefined, fallback: string): string {
-  if (!key) return fallback
-  return fields.find(field => field.id === key)?.label ?? fallback
-}
+import { fieldLabel, numericValue, stringValue } from '@/services/explore/chartPreviewShared'
 
 function median(values: number[]): number | null {
   if (values.length === 0) return null
@@ -29,54 +12,7 @@ function median(values: number[]): number | null {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-export function buildExploreChartOption(
-  chart: ExploreChartDefinitionSnapshot,
-  dataframeModel: ExploreDataframeModel,
-): EChartsOption | null {
-  if (chart.chartType === 'bar') {
-    const categoryKey = chart.fieldMapping.category
-    if (!categoryKey) return null
-
-    const grouped = new Map<string, number>()
-    for (const row of dataframeModel.rows) {
-      const category = stringValue(row.values[categoryKey], row.subjectLabel)
-      const yCandidate = numericValue(chart.fieldMapping.y ? row.values[chart.fieldMapping.y] : null)
-      const nextValue = yCandidate ?? 1
-      grouped.set(category, (grouped.get(category) ?? 0) + nextValue)
-    }
-
-    const entries = Array.from(grouped.entries()).sort((left, right) => right[1] - left[1])
-    if (entries.length === 0) return null
-
-    return {
-      animationDuration: 300,
-      tooltip: { trigger: 'axis' },
-      grid: { top: 56, right: 24, bottom: 48, left: 56 },
-      xAxis: {
-        type: 'category',
-        data: entries.map(([label]) => label),
-        axisLabel: { interval: 0, rotate: entries.length > 6 ? 25 : 0 },
-        name: fieldLabel(dataframeModel.definition.columns, categoryKey, 'Category'),
-      },
-      yAxis: {
-        type: 'value',
-        name: chart.fieldMapping.y
-          ? fieldLabel(dataframeModel.definition.columns, chart.fieldMapping.y, 'Value')
-          : 'Count',
-      },
-      series: [{
-        type: 'bar',
-        data: entries.map(([, value]) => value),
-        itemStyle: { color: '#2563eb' },
-      }],
-    }
-  }
-
-  if (chart.chartType === 'scatter') return buildScatterChartOption(chart, dataframeModel)
-  return null
-}
-
-export function buildScatterChartOption(
+export function buildScatterChartPreview(
   chart: ExploreChartDefinitionSnapshot,
   dataframeModel: ExploreDataframeModel,
 ): EChartsOption | null {
@@ -181,13 +117,4 @@ export function buildScatterChartOption(
         },
     }],
   }
-}
-
-export function buildExploreChartPreviewOption(
-  chart: ExploreChartDefinitionSnapshot,
-  dataframeModel: ExploreDataframeModel,
-): EChartsOption | null {
-  if (chart.chartType === 'bar') return buildExploreChartOption(chart, dataframeModel)
-  if (chart.chartType === 'scatter') return buildScatterChartOption(chart, dataframeModel)
-  return null
 }

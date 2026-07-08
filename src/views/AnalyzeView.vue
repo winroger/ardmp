@@ -13,17 +13,20 @@ import { useExploreStore } from '@/stores/exploreStore'
 import { useMappingStore } from '@/stores/mappingStore'
 import { useShapesStore } from '@/stores/shapesStore'
 import { isCanvasVisibleDataSource } from '@/domain/DataSource'
-import { generateRdf } from '@/services/rdf/rdfGenerator'
+import { generateRdf, serializeGraph } from '@/services/rdf/rdfGenerator'
 import { buildRuntimeStagingShapes } from '@/services/mapping/stagingShapes'
 import {
   buildExploreDataframeModel,
   buildExploreDataset,
   type ExploreClassDefinition,
+  type ExploreChartPreviewModel,
   type ExploreDataframeModel,
   type ExploreFieldDefinition,
 } from '@/services/explore/exploreService'
-import { buildExploreChartPreviewOption } from '@/services/explore/echartsOptions'
-import ExploreChartCanvas from '@/features/explore/components/ExploreChartCanvas.vue'
+import { buildExploreChartPreview } from '@/services/explore/chartPreview'
+import { buildBrowseModel, type BrowseModel } from '@/services/browse/browseService'
+import ExploreChartPreview from '@/features/explore/components/ExploreChartPreview.vue'
+import SubjectDetailDialog from '@/features/browse/components/SubjectDetailDialog.vue'
 
 const shapesStore = useShapesStore()
 const dataStore = useDataStore()
@@ -51,6 +54,8 @@ const canExplore = computed(() =>
 const datasetError = ref<string | null>(null)
 const dataset = ref<ReturnType<typeof buildExploreDataset> | null>(null)
 const currentStore = ref<Store | null>(null)
+const browseModel = ref<BrowseModel | null>(null)
+const ttlOutput = ref('')
 
 const builderDialogOpen = ref(false)
 const builderStep = ref<1 | 2>(1)
@@ -59,11 +64,23 @@ const selectedFieldIdToAdd = ref('')
 const editingChartId = ref<string | null>(null)
 const editingDataframeId = ref<string | null>(null)
 const activeChartId = ref<string | null>(null)
+const detailOpen = ref(false)
+const detailSubjectIri = ref<string | null>(null)
+
+const combinedShapesTurtle = computed(() =>
+  profiles.value.map(profile => profile.rawTurtle).join('\n\n'),
+)
+
+const browseShapesTurtle = computed(() =>
+  [combinedShapesTurtle.value, runtimeStagingShapes.value.turtle].filter(Boolean).join('\n\n'),
+)
 
 async function regenerate(): Promise<void> {
   if (!canExplore.value) {
     currentStore.value = null
     dataset.value = null
+    browseModel.value = null
+    ttlOutput.value = ''
     datasetError.value = null
     return
   }
@@ -73,10 +90,14 @@ async function regenerate(): Promise<void> {
     const generated = generateRdf(ap.value, mappingStore.state, sources.value)
     currentStore.value = generated.store as Store
     dataset.value = buildExploreDataset(generated.store as Store, exploreNodeShapes.value, sources.value)
+    browseModel.value = buildBrowseModel(generated.store as Store, exploreNodeShapes.value, sources.value)
+    ttlOutput.value = await serializeGraph(generated.store as Store, 'text/turtle')
   } catch (error) {
     datasetError.value = error instanceof Error ? error.message : String(error)
     currentStore.value = null
     dataset.value = null
+    browseModel.value = null
+    ttlOutput.value = ''
   }
 }
 
@@ -178,6 +199,18 @@ const categoricalChartFields = computed(() =>
   chartFieldDefinitions.value.filter(field => field.kind !== 'number'),
 )
 
+const wktChartFields = computed(() =>
+  chartFieldDefinitions.value.filter(field => field.datatype === 'http://www.opengis.net/ont/geosparql#wktLiteral'),
+)
+
+const chartFieldsExcludingGeometry = computed(() =>
+  chartFieldDefinitions.value.filter(field => field.id !== chartDraft.value.fieldMapping.geometry),
+)
+
+const geoCategoricalChartFields = computed(() =>
+  chartFieldsExcludingGeometry.value.filter(field => field.kind !== 'number'),
+)
+
 function chartFieldOption(field: ExploreFieldDefinition) {
   return {
     label: `${field.label} · ${field.kind}`,
@@ -194,19 +227,27 @@ const chartValidationMessage = computed(() => {
   if (chartDraft.value.chartType === 'scatter' && (!chartDraft.value.fieldMapping.x || !chartDraft.value.fieldMapping.y)) {
     return 'Scatter charts need numeric X and Y fields.'
   }
+  if (chartDraft.value.chartType === 'geo' && !chartDraft.value.fieldMapping.geometry) {
+    return 'Geo charts need a WKT geometry field.'
+  }
   if (!selectedChartDataframeModel.value?.rows.length) return 'The selected dataframe currently has no rows to chart.'
+  if (chartDraft.value.chartType === 'geo' && selectedChartDataframeModel.value && !buildExploreChartPreview(draftChartDefinition.value, selectedChartDataframeModel.value)) {
+    return 'Geo charts need at least one valid POINT WKT value.'
+  }
   return null
 })
 
-const previewChart = computed(() => {
+const draftChartDefinition = computed(() => ({
+  id: editingChartId.value ?? 'draft-chart',
+  title: chartDraft.value.title.trim() || 'Preview chart',
+  chartType: chartDraft.value.chartType,
+  dataframeId: chartDraft.value.dataframeId,
+  fieldMapping: { ...chartDraft.value.fieldMapping },
+}))
+
+const previewChart = computed<ExploreChartPreviewModel | null>(() => {
   if (!selectedChartDataframeModel.value || chartValidationMessage.value) return null
-  return buildExploreChartPreviewOption({
-    id: editingChartId.value ?? 'draft-chart',
-    title: chartDraft.value.title.trim() || 'Preview chart',
-    chartType: chartDraft.value.chartType,
-    dataframeId: chartDraft.value.dataframeId,
-    fieldMapping: { ...chartDraft.value.fieldMapping },
-  }, selectedChartDataframeModel.value)
+  return buildExploreChartPreview(draftChartDefinition.value, selectedChartDataframeModel.value)
 })
 
 const savedCharts = computed(() =>
@@ -225,6 +266,11 @@ const activeSavedChart = computed(() => {
   if (savedCharts.value.length === 0) return null
   return savedCharts.value.find(entry => entry.chart.id === activeChartId.value) ?? savedCharts.value[0]
 })
+
+function openDetailByIri(subjectIri: string): void {
+  detailSubjectIri.value = subjectIri
+  detailOpen.value = true
+}
 
 watch(savedCharts, nextSavedCharts => {
   if (nextSavedCharts.length === 0) {
@@ -285,6 +331,7 @@ function addSelectedFieldToDataframe(): void {
   exploreStore.addColumnToDataframeDraft({
     id: selectedField.id,
     label: selectedField.label,
+    datatype: selectedField.datatype,
     path: selectedField.path.map(segment => ({ ...segment })),
   })
   selectedFieldIdToAdd.value = ''
@@ -435,10 +482,11 @@ function removeDataframe(dataframeId: string): void {
           </div>
 
           <div class="saved-chart-card__body">
-            <ExploreChartCanvas
+            <ExploreChartPreview
               v-if="activeSavedChart.dataframeModel"
-              :option="buildExploreChartPreviewOption(activeSavedChart.chart, activeSavedChart.dataframeModel)"
+              :preview="buildExploreChartPreview(activeSavedChart.chart, activeSavedChart.dataframeModel)!"
               height="100%"
+              @open-subject="openDetailByIri"
             />
             <p v-else class="empty-state">This chart cannot be rendered with the current RDF graph.</p>
           </div>
@@ -610,7 +658,7 @@ function removeDataframe(dataframeId: string): void {
         <div class="builder-panel__header">
           <div>
             <h2 class="section-title">Step 2: Chart Builder</h2>
-            <p class="helper-text">Configure the saved dataframe as a chart. Scatter plots support explicit defaults for color and dot size.</p>
+            <p class="helper-text">Configure the saved dataframe as a chart. Geo charts accept WKT POINT values, while scatter plots support explicit defaults for color and dot size.</p>
           </div>
         </div>
 
@@ -643,6 +691,7 @@ function removeDataframe(dataframeId: string): void {
               :options="[
                 { label: 'Bar', value: 'bar' },
                 { label: 'Scatter', value: 'scatter' },
+                { label: 'Geo map', value: 'geo' },
               ]"
               option-label="label"
               option-value="value"
@@ -676,7 +725,7 @@ function removeDataframe(dataframeId: string): void {
             </label>
           </template>
 
-          <template v-else>
+          <template v-else-if="chartDraft.chartType === 'scatter'">
             <label>
               <span>X field</span>
               <Select
@@ -753,6 +802,56 @@ function removeDataframe(dataframeId: string): void {
               />
             </label>
           </template>
+
+          <template v-else>
+            <label>
+              <span>Geometry field</span>
+              <Select
+                :model-value="chartDraft.fieldMapping.geometry"
+                :options="wktChartFields.map(chartFieldOption)"
+                option-label="label"
+                option-value="value"
+                placeholder="WKT POINT column"
+                @update:model-value="value => exploreStore.updateChartDraft({ fieldMapping: { geometry: value } })"
+              />
+            </label>
+
+            <label>
+              <span>Color by</span>
+              <Select
+                :model-value="chartDraft.fieldMapping.color"
+                :options="[defaultOption, ...geoCategoricalChartFields.map(chartFieldOption)]"
+                option-label="label"
+                option-value="value"
+                placeholder="Default color"
+                @update:model-value="value => exploreStore.updateChartDraft({ fieldMapping: { color: value || undefined } })"
+              />
+            </label>
+
+            <label>
+              <span>Dot size</span>
+              <Select
+                :model-value="chartDraft.fieldMapping.size"
+                :options="[defaultOption, ...numericChartFields.map(chartFieldOption)]"
+                option-label="label"
+                option-value="value"
+                placeholder="Default size"
+                @update:model-value="value => exploreStore.updateChartDraft({ fieldMapping: { size: value || undefined } })"
+              />
+            </label>
+
+            <label>
+              <span>Point label</span>
+              <Select
+                :model-value="chartDraft.fieldMapping.label"
+                :options="[noneOption, ...chartFieldsExcludingGeometry.map(chartFieldOption)]"
+                option-label="label"
+                option-value="value"
+                placeholder="Optional"
+                @update:model-value="value => exploreStore.updateChartDraft({ fieldMapping: { label: value || undefined } })"
+              />
+            </label>
+          </template>
         </div>
 
         <Message v-if="chartValidationMessage" severity="info" :closable="false">
@@ -762,7 +861,7 @@ function removeDataframe(dataframeId: string): void {
         <div class="preview-grid">
           <section class="surface-subsection">
             <h3 class="panel-title">Chart Preview</h3>
-            <ExploreChartCanvas v-if="previewChart" :option="previewChart" :height="340" />
+            <ExploreChartPreview v-if="previewChart" :preview="previewChart" :height="340" @open-subject="openDetailByIri" />
             <p v-else class="empty-state">Select the required fields to render a preview.</p>
           </section>
 
@@ -799,6 +898,15 @@ function removeDataframe(dataframeId: string): void {
         </div>
       </template>
     </Dialog>
+
+    <SubjectDetailDialog
+      v-model="detailOpen"
+      :subject-iri="detailSubjectIri"
+      :model="browseModel"
+      :shapes="exploreNodeShapes"
+      :shapes-turtle="browseShapesTurtle"
+      :values-turtle="ttlOutput"
+    />
   </div>
 </template>
 

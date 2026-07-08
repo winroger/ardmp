@@ -47,7 +47,7 @@ export interface MappingStoreSnapshot {
   extensionState: Record<string, unknown>
 }
 
-export type ExploreChartType = 'bar' | 'scatter'
+export type ExploreChartType = 'bar' | 'scatter' | 'geo'
 
 export interface ExploreQueryPathSegmentSnapshot {
   predicate: string
@@ -57,6 +57,7 @@ export interface ExploreQueryPathSegmentSnapshot {
 export interface ExploreDataframeColumnSnapshot {
   id: string
   label: string
+  datatype?: string
   path: ExploreQueryPathSegmentSnapshot[]
 }
 
@@ -70,6 +71,7 @@ export interface ExploreDataframeDefinitionSnapshot {
 export interface ExploreChartFieldMappingSnapshot {
   category?: string
   color?: string
+  geometry?: string
   label?: string
   medianLineBasis?: 'x' | 'y'
   size?: string
@@ -105,6 +107,7 @@ export function cloneExploreDataframeColumn(
   return {
     id: column.id,
     label: column.label,
+    datatype: column.datatype,
     path: column.path.map(cloneExploreQueryPathSegment),
   }
 }
@@ -126,6 +129,7 @@ export function cloneExploreChartFieldMapping(
   return {
     category: fieldMapping.category,
     color: fieldMapping.color,
+    geometry: fieldMapping.geometry,
     label: fieldMapping.label,
     medianLineBasis: fieldMapping.medianLineBasis,
     size: fieldMapping.size,

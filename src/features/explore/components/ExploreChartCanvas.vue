@@ -25,10 +25,12 @@ function ensureChart(): void {
 function renderChart(): void {
   ensureChart()
   if (!chart) return
+
   if (!props.option) {
     chart.clear()
     return
   }
+
   chart.setOption(props.option, true)
   chart.resize()
 }

@@ -7,6 +7,7 @@ import {
   type ExploreQueryPathSegmentSnapshot,
 } from '@/services/project/projectSnapshot'
 import { buildBrowseModel } from '@/services/browse/browseService'
+import type { ExploreChartPreviewModel } from '@/services/explore/chartPreview'
 
 export type ExploreFieldKind = 'string' | 'number' | 'resource'
 
@@ -46,6 +47,8 @@ export interface ExploreDataframeModel {
   rootClassLabel: string
   rows: ExploreTableRow[]
 }
+
+export type { ExploreChartPreviewModel }
 
 interface SubjectIndexEntry {
   label: string
@@ -303,11 +306,16 @@ export function buildExploreDataframeModel(
   const classDefinition = dataset.classes.find(entry => entry.classIri === dataframe.rootClassIri)
   if (!classDefinition) return null
 
+  const normalizedColumns = dataframe.columns.map(column => ({
+    ...column,
+    datatype: column.datatype ?? classDefinition.fields.find(entry => entry.id === column.id)?.datatype,
+  }))
+
   const subjectIndex = buildSubjectIndex(store, shapes, sources)
   const rows = subjectIrisForClass(store, dataframe.rootClassIri).map(subjectIri => {
     const values: Record<string, string | number | null> = {}
 
-    for (const column of dataframe.columns) {
+    for (const column of normalizedColumns) {
       const field = classDefinition.fields.find(entry => entry.id === column.id)
       const terms = valuesForPath(store, subjectIri, column.path)
       values[column.id] = collapseValues(terms, subjectIndex, field?.kind ?? 'string')
@@ -321,7 +329,10 @@ export function buildExploreDataframeModel(
   })
 
   return {
-    definition: dataframe,
+    definition: {
+      ...dataframe,
+      columns: normalizedColumns,
+    },
     rootClassLabel: classDefinition.classLabel,
     rows,
   }
