@@ -65,6 +65,7 @@ export interface ExploreDataframeDefinitionSnapshot {
   id: string
   title: string
   rootClassIri: string
+  sourceId?: string
   columns: ExploreDataframeColumnSnapshot[]
 }
 
@@ -119,6 +120,7 @@ export function cloneExploreDataframeDefinition(
     id: dataframe.id,
     title: dataframe.title,
     rootClassIri: dataframe.rootClassIri,
+    sourceId: dataframe.sourceId,
     columns: dataframe.columns.map(cloneExploreDataframeColumn),
   }
 }

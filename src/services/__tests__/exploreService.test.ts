@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { graph, parse } from 'rdflib'
 import { ApplicationProfile, parseShaclProfile } from '@/domain/NodeShape'
+import { MappingState } from '@/domain/Mapping'
+import { TabularDataSource } from '@/domain/DataSource'
 import { buildExploreChartPreview } from '@/services/explore/chartPreview'
+import { reconcileExploreDataframeDefinition } from '@/services/explore/dataframeReconciliation'
 import { buildExploreDataframeModel, buildExploreDataset } from '@/services/explore/exploreService'
+import { stagingClassForSource } from '@/services/mapping/stagingSemantics'
 
 const PROFILE = `
 @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -79,6 +83,15 @@ function createLinkedExploreState() {
     ap,
     store,
   }
+}
+
+function createSource() {
+  return new TabularDataSource({
+    id: 'source-buildings',
+    name: 'Buildings Source',
+    headers: ['Building Name', 'Build Year'],
+    rows: [['Building A', '1998']],
+  })
 }
 
 describe('exploreService', () => {
@@ -248,5 +261,27 @@ describe('exploreService', () => {
 
     expect(numericBarOption && numericBarOption.kind === 'echarts' ? numericBarOption.option.xAxis : null).toMatchObject({ data: ['12', '20'] })
     expect(yearBarOption && yearBarOption.kind === 'echarts' ? yearBarOption.option.xAxis : null).toMatchObject({ data: ['1985', '1998'] })
+  })
+
+  it('reconciles a staging dataframe to the mapped hybrid target class for the same source', () => {
+    const { ap } = createLinkedExploreState()
+    const source = createSource()
+    const mapping = new MappingState()
+    mapping.addOrReplace({
+      sourceId: source.id,
+      sourceHeader: 'Building Name',
+      shapeIri: 'http://example.org/BuildingShape',
+      propertyPath: 'http://example.org/name',
+    })
+
+    const reconciled = reconcileExploreDataframeDefinition({
+      id: 'df-staging',
+      title: 'Buildings staging dataframe',
+      rootClassIri: stagingClassForSource(source).value,
+      columns: [],
+    }, [source], mapping, ap.allNodeShapes())
+
+    expect(reconciled.sourceId).toBe(source.id)
+    expect(reconciled.rootClassIri).toBe('http://example.org/Building')
   })
 })

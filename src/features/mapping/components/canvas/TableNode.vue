@@ -20,10 +20,27 @@ const linkInfo = computed<Map<string, LinkedColumnInfo>>(() => {
   return map
 })
 
+const mappedHeaders = computed(() =>
+  props.data.source.headers.filter(header => isMappedColumn(header)),
+)
+
+const stagingGraphState = computed(() =>
+  mappingStore.stagingGraphStateForSource(props.data.source.id, props.data.source.headers, mappedHeaders.value),
+)
+
 function toggleStagingColumn(header: string): void {
   if (isMappedColumn(header)) return
   const active = mappingStore.isStagingColumnActive(props.data.source.id, header)
   mappingStore.setStagingColumnActive(props.data.source.id, header, !active)
+}
+
+function toggleStagingGraph(): void {
+  mappingStore.setStagingGraphActive(
+    props.data.source.id,
+    props.data.source.headers,
+    stagingGraphState.value === 'disabled',
+    mappedHeaders.value,
+  )
 }
 
 function isStagingColumnActive(header: string): boolean {
@@ -44,6 +61,12 @@ function stagingTitleForHeader(header: string): string {
   if (state === 'mapped') return 'Column is mapped and always included'
   if (state === 'staging') return 'Disable staging column'
   return 'Enable staging column'
+}
+
+function stagingGraphTitle(): string {
+  if (stagingGraphState.value === 'enabled') return 'Disable staging graph for this imported node'
+  if (stagingGraphState.value === 'partial') return 'Enable staging graph for all unmapped columns'
+  return 'Enable staging graph for this imported node'
 }
 </script>
 
@@ -77,6 +100,16 @@ function stagingTitleForHeader(header: string): string {
         @click.stop="data.onPreview?.()"
       >
         <i class="pi pi-eye" />
+      </button>
+      <button
+        class="graph-toggle icon-pill-button"
+        type="button"
+        :class="`is-${stagingGraphState}`"
+        :title="stagingGraphTitle()"
+        :aria-pressed="stagingGraphState !== 'disabled'"
+        @click.stop="toggleStagingGraph"
+      >
+        <i :class="stagingGraphState === 'disabled' ? 'pi pi-sitemap' : stagingGraphState === 'partial' ? 'pi pi-minus-circle' : 'pi pi-check-circle'" />
       </button>
     </header>
     <ul class="headers">
@@ -149,6 +182,36 @@ header {
   &:hover {
     background: white;
     border-color: color-mix(in srgb, var(--table-header-color) 35%, white);
+  }
+}
+
+.graph-toggle {
+  border: 1px solid var(--table-preview-border);
+  background: rgba(255, 255, 255, 0.72);
+  color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: white;
+    border-color: color-mix(in srgb, var(--table-header-color) 35%, white);
+  }
+
+  &.is-enabled {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  &.is-partial {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #a16207;
+  }
+
+  &.is-disabled {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+    color: #6b7280;
   }
 }
 

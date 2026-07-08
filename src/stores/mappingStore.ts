@@ -115,8 +115,16 @@ export const useMappingStore = defineStore('mapping', () => {
     state.setStagingColumnActive(sourceId, header, active)
   }
 
+  function setStagingGraphActive(sourceId: string, headers: string[], active: boolean, lockedHeaders: string[] = []): void {
+    state.setStagingGraphActive(sourceId, headers, active, lockedHeaders)
+  }
+
   function isStagingColumnActive(sourceId: string, header: string): boolean {
     return state.isStagingColumnActive(sourceId, header)
+  }
+
+  function stagingGraphStateForSource(sourceId: string, headers: string[], lockedHeaders: string[] = []): 'enabled' | 'disabled' | 'partial' {
+    return state.stagingGraphStateForSource(sourceId, headers, lockedHeaders)
   }
 
   function addTransformationNode(kind: MappingTransformId = 'lat-lng-to-wkt'): TransformationNodeConfig {
@@ -208,7 +216,9 @@ export const useMappingStore = defineStore('mapping', () => {
     set,
     unset,
     setStagingColumnActive,
+    setStagingGraphActive,
     isStagingColumnActive,
+    stagingGraphStateForSource,
     addTransformationNode,
     transformationInputsForNode,
     syncTransformationMappings,

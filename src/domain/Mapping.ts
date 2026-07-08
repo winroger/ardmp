@@ -174,12 +174,38 @@ export class MappingState {
     return headers.some(header => this.isStagingColumnActive(sourceId, header))
   }
 
+  stagingGraphStateForSource(
+    sourceId: string,
+    headers: string[],
+    lockedHeaders: string[] = [],
+  ): 'enabled' | 'disabled' | 'partial' {
+    const eligibleHeaders = headers.filter(header => !lockedHeaders.includes(header))
+    if (eligibleHeaders.length === 0) return 'enabled'
+
+    const activeCount = eligibleHeaders.filter(header => this.isStagingColumnActive(sourceId, header)).length
+    if (activeCount === 0) return 'disabled'
+    if (activeCount === eligibleHeaders.length) return 'enabled'
+    return 'partial'
+  }
+
   isStagingColumnActive(sourceId: string, header: string): boolean {
     return isStagingColumnActive(this.stagingColumns, sourceId, header)
   }
 
   setStagingColumnActive(sourceId: string, header: string, active: boolean): void {
     this.stagingColumns = setStagingColumnActive(this.stagingColumns, sourceId, header, active)
+  }
+
+  setStagingGraphActive(
+    sourceId: string,
+    headers: string[],
+    active: boolean,
+    lockedHeaders: string[] = [],
+  ): void {
+    const eligibleHeaders = headers.filter(header => !lockedHeaders.includes(header))
+    for (const header of eligibleHeaders) {
+      this.stagingColumns = setStagingColumnActive(this.stagingColumns, sourceId, header, active)
+    }
   }
 
   clear(): void {

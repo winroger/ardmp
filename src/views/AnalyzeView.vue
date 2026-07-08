@@ -25,6 +25,7 @@ import {
 } from '@/services/explore/exploreService'
 import { buildExploreChartPreview } from '@/services/explore/chartPreview'
 import { buildBrowseModel, type BrowseModel } from '@/services/browse/browseService'
+import { reconcileExploreDataframeDefinitions } from '@/services/explore/dataframeReconciliation'
 import ExploreChartPreview from '@/features/explore/components/ExploreChartPreview.vue'
 import SubjectDetailDialog from '@/features/browse/components/SubjectDetailDialog.vue'
 
@@ -92,6 +93,18 @@ async function regenerate(): Promise<void> {
     dataset.value = buildExploreDataset(generated.store as Store, exploreNodeShapes.value, sources.value)
     browseModel.value = buildBrowseModel(generated.store as Store, exploreNodeShapes.value, sources.value)
     ttlOutput.value = await serializeGraph(generated.store as Store, 'text/turtle')
+
+    const reconciledDataframes = reconcileExploreDataframeDefinitions(
+      dataframes.value,
+      sources.value,
+      mappingStore.state,
+      nodeShapes.value,
+    )
+    reconciledDataframes.forEach((dataframe, index) => {
+      if (dataframe !== dataframes.value[index]) {
+        exploreStore.replaceDataframe(dataframes.value[index].id, dataframe)
+      }
+    })
   } catch (error) {
     datasetError.value = error instanceof Error ? error.message : String(error)
     currentStore.value = null
@@ -317,8 +330,13 @@ function closeBuilderDialog(): void {
 
 function updateDataframeRootClass(rootClassIri: string): void {
   selectedFieldIdToAdd.value = ''
+  const matchingSource = sources.value
+    .filter(source => isCanvasVisibleDataSource(source))
+    .find(source => reconcileExploreDataframeDefinitions([{ id: 'draft', title: '', rootClassIri, columns: [] }], [source], mappingStore.state, nodeShapes.value)[0].rootClassIri === rootClassIri
+      || source.name && false)
   exploreStore.updateDataframeDraft({
     rootClassIri,
+    sourceId: matchingSource?.id,
     columns: [],
   })
 }

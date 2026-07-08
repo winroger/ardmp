@@ -58,6 +58,24 @@ describe('MappingState', () => {
     m.setStagingColumnActive('people', 'Email', true)
     expect(m.isStagingColumnActive('people', 'Email')).toBe(true)
   })
+
+  it('can toggle the staging graph for all unmapped headers of a source', () => {
+    const m = new MappingState()
+
+    expect(m.stagingGraphStateForSource('people', ['Name', 'Email', 'Role'], ['Role'])).toBe('enabled')
+
+    m.setStagingGraphActive('people', ['Name', 'Email', 'Role'], false, ['Role'])
+    expect(m.isStagingColumnActive('people', 'Name')).toBe(false)
+    expect(m.isStagingColumnActive('people', 'Email')).toBe(false)
+    expect(m.isStagingColumnActive('people', 'Role')).toBe(true)
+    expect(m.stagingGraphStateForSource('people', ['Name', 'Email', 'Role'], ['Role'])).toBe('disabled')
+
+    m.setStagingColumnActive('people', 'Name', true)
+    expect(m.stagingGraphStateForSource('people', ['Name', 'Email', 'Role'], ['Role'])).toBe('partial')
+
+    m.setStagingGraphActive('people', ['Name', 'Email', 'Role'], true, ['Role'])
+    expect(m.stagingGraphStateForSource('people', ['Name', 'Email', 'Role'], ['Role'])).toBe('enabled')
+  })
 })
 
 

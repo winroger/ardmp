@@ -16,6 +16,7 @@ import {
 export interface ExploreDataframeDraft {
   title: string
   rootClassIri: string
+  sourceId?: string
   columns: ExploreDataframeColumnSnapshot[]
 }
 
@@ -109,6 +110,7 @@ export const useExploreStore = defineStore('explore', () => {
     dataframeDraft.value = {
       title: dataframe.title,
       rootClassIri: dataframe.rootClassIri,
+      sourceId: dataframe.sourceId,
       columns: dataframe.columns.map(cloneExploreDataframeColumn),
     }
   }
@@ -129,6 +131,7 @@ export const useExploreStore = defineStore('explore', () => {
       id: crypto.randomUUID(),
       title: title || 'Untitled dataframe',
       rootClassIri: dataframeDraft.value.rootClassIri,
+      sourceId: dataframeDraft.value.sourceId,
       columns: dataframeDraft.value.columns.map(cloneExploreDataframeColumn),
     }
   }
