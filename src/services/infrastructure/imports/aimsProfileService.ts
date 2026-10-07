@@ -1,4 +1,4 @@
-const AIMS_API = 'https://pg4aims.ulb.tu-darmstadt.de/AIMS/application-profiles'
+const AIMS_API = 'https://aims-backend.tools.coscine.dev/AIMS/application-profiles'
 
 export interface AimsProfile {
   name: string
