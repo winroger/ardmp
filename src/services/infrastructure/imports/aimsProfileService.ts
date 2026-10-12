@@ -36,9 +36,12 @@ export async function loadAimsProfiles(): Promise<AimsProfile[]> {
 }
 
 export async function fetchAimsProfileTurtle(profile: AimsProfile): Promise<string> {
-  const response = await fetch(profile.base_url, {
+  // Metadata responses omit the definition. Download the raw RDF directly,
+  // preserving the full profile IRI (including trailing slashes and versions).
+  const url = `${AIMS_API}/RawRDF/${encodeURIComponent(profile.base_url)}`
+  const response = await fetch(url, {
     headers: {
-      Accept: 'text/turtle, application/x-turtle, text/plain, */*',
+      Accept: 'text/turtle',
     },
     redirect: 'follow',
   })
@@ -47,6 +50,10 @@ export async function fetchAimsProfileTurtle(profile: AimsProfile): Promise<stri
     throw new Error(`AIMS profile load failed: ${response.status}`)
   }
 
-  return await response.text()
+  const turtle = await response.text()
+  if (!turtle.trim()) {
+    throw new Error('AIMS profile load failed: empty Turtle response')
+  }
+  return turtle
 }
 
