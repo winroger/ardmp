@@ -28,6 +28,7 @@ const props = defineProps<{
     }
     onPreview?: () => void
     onDelete?: () => void
+    onAddInput?: () => void
   }
 }>()
 
@@ -82,6 +83,7 @@ function deleteNode(): void {
     </div>
 
     <div class="footer-actions">
+      <Button v-if="data.onAddInput" label="Add input" icon="pi pi-plus" size="small" text @click.stop="data.onAddInput()" />
       <Button :label="data.previewLabel ?? 'Preview'" icon="pi pi-eye" size="small" text @click.stop="previewNode" />
     </div>
   </div>

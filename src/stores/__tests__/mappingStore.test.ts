@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { getGeoNamesNode, runGeoNamesNode } from '@/features/mapping/extensions/modules/nodes/geonames/workflow'
+import { fetchGeoNameFeatures } from '@/features/mapping/extensions/modules/nodes/geonames/client'
+import { geoNamesModule } from '@/features/mapping/extensions/modules/nodes/geonames'
 import { useMappingStore } from '@/stores/mappingStore'
 import { useDataStore } from '@/stores/dataStore'
 import type { DataSource } from '@/domain/DataSource'
@@ -66,6 +68,7 @@ vi.mock('@/features/mapping/extensions/modules/nodes/geonames/client', () => ({
       wikipediaURL: '',
     }])) ,
     totalCount: ids.length,
+    lookupErrors: [],
     processedCount: ids.length,
     cachedCount: 0,
   })),
@@ -147,6 +150,77 @@ describe('mappingStore GeoNames flow state', () => {
     expect(getGeoNamesNode(store, node.id)?.results['6173331']?.name).toBe('Geo 6173331')
     expect(dataStore.findById(`geonames-output:${node.id}`)?.hidden).toBe(true)
     expect(dataStore.findById(`geonames-output:${node.id}`)?.headers).toEqual(['name', 'id', 'lat', 'lng'])
+  })
+
+  it('runs the free text input and restores its results from a project snapshot', async () => {
+    const store = useMappingStore()
+    const dataStore = useDataStore()
+    const node = addGeoNamesNode(store, 'demo-user')
+    upsertGeoNamesUiEdge(store, {
+      id: 'geo-ui:text-input',
+      source: 'src:places',
+      sourceHandle: 'h:place',
+      target: node.id,
+      targetHandle: 'geo-text-input',
+    })
+    const sample = await fetchGeoNameFeatures(['6173331'], 'demo-user')
+    vi.mocked(fetchGeoNameFeatures).mockResolvedValueOnce({ ...sample, results: { Vancouver: sample.results['6173331']! } })
+    const source = { ...csvSource('places', 'Places', ['place'], [['Vancouver'], [''], ['Vancouver']]),
+      recordIds: ['row-a', 'row-b', 'row-c'] }
+
+    await runGeoNamesNode(store, dataStore, node.id, [source])
+
+    expect(fetchGeoNameFeatures).toHaveBeenLastCalledWith(['Vancouver', 'Vancouver'], 'demo-user', expect.objectContaining({ inputType: 'text' }))
+    expect(getGeoNamesNode(store, node.id)).toMatchObject({ inputType: 'text', status: 'success', results: { Vancouver: { id: '6173331' } } })
+    expect(dataStore.findById(`geonames-output:${node.id}`)).toMatchObject({
+      rows: [['Geo 6173331', '6173331', '1', '2'], ['', '', '', ''], ['Geo 6173331', '6173331', '1', '2']],
+      recordIds: source.recordIds,
+    })
+    const snapshot = store.createSnapshot()
+    store.reset()
+    store.restoreSnapshot(snapshot)
+    expect(getGeoNamesNode(store, node.id)).toMatchObject({ inputType: 'text', results: { Vancouver: { id: '6173331' } } })
+    expect(geoNamesUiEdges(store)[0]?.targetHandle).toBe('geo-text-input')
+  })
+
+  it('completes with warnings, persists lookup errors and clears them after a successful retry', async () => {
+    const store = useMappingStore()
+    const dataStore = useDataStore()
+    const node = addGeoNamesNode(store)
+    upsertGeoNamesUiEdge(store, {
+      id: 'geo-ui:input', source: 'src:places', sourceHandle: 'h:id', target: node.id, targetHandle: 'geo-input',
+    })
+    const sample = await fetchGeoNameFeatures(['good'], 'demo')
+    const lookupErrors = [{ input: 'missing', message: 'Unknown location' }]
+    vi.mocked(fetchGeoNameFeatures).mockImplementationOnce(async (_values, _username, options) => {
+      options?.onProgress?.({ processedCount: 2, totalCount: 2, cachedCount: 0, currentId: 'missing', lookupErrors })
+      expect(getGeoNamesNode(store, node.id)).toMatchObject({ status: 'running', lookupErrors })
+      return { ...sample, totalCount: 2, processedCount: 2, lookupErrors }
+    })
+    const context = { mappingStore: store, dataStore, sources: [csvSource('places', 'Places', ['id'], [['good'], ['missing']])] }
+
+    const completion = await geoNamesModule.runtimeHandlers![0]!.run(node.id, context)
+
+    expect(completion).toMatchObject({ successSeverity: 'warn', successSummary: 'GeoNames completed with warnings' })
+    expect(completion.successDetail).toContain('1 lookup(s) failed')
+    expect(getGeoNamesNode(store, node.id)).toMatchObject({ status: 'success', lookupErrors })
+    expect(getGeoNamesNode(store, node.id)?.stats.lastError).toBeUndefined()
+    expect(dataStore.findById(`geonames-output:${node.id}`)?.rows).toEqual([['Geo good', 'good', '1', '2'], ['', '', '', '']])
+
+    const snapshot = store.createSnapshot()
+    const storedErrors = getGeoNamesNode(store, node.id)!.lookupErrors!
+    const savedNode = (snapshot.extensionState['node.geonames'] as { nodes: typeof node[] }).nodes[0]!
+    expect(savedNode.lookupErrors).not.toBe(storedErrors)
+    expect(savedNode.lookupErrors?.[0]).not.toBe(storedErrors[0])
+    storedErrors[0]!.message = 'Changed after saving'
+    store.reset()
+    expect(getGeoNamesNode(store, node.id)).toBeUndefined()
+    store.restoreSnapshot(snapshot)
+    expect(getGeoNamesNode(store, node.id)?.lookupErrors).toEqual([{ input: 'missing', message: 'Unknown location' }])
+    const retry = await geoNamesModule.runtimeHandlers![0]!.run(node.id, context)
+    expect(retry.successSeverity).toBe('success')
+    expect(getGeoNamesNode(store, node.id)?.lookupErrors).toEqual([])
+    expect(dataStore.findById(`geonames-output:${node.id}`)?.rows[1]).toEqual(['Geo missing', 'missing', '1', '2'])
   })
 
   it('syncs direct GeoNames output mappings to shapes after the GeoNames node runs', async () => {

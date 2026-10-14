@@ -45,7 +45,7 @@ export function buildEnrichmentOutputRows<ResultRecord>(
 ): unknown[][] {
   return source.rows.map(row => {
     const recordId = String(row[headerIndex] ?? '').trim()
-    const record = recordId ? results[recordId] : undefined
+    const record = recordId && Object.hasOwn(results, recordId) ? results[recordId] : undefined
     return fields.map(field => readField(record, field))
   })
 }

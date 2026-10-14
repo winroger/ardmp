@@ -14,6 +14,8 @@ import { useDataStore } from '@/stores/dataStore'
 import { useMappingStore } from '@/stores/mappingStore'
 import { csvSource } from '@/test/dataSources'
 import { addGeoNamesNode } from '@/test/mappingExtensionFixtures'
+import { geoNamesModule } from '@/features/mapping/extensions/modules/nodes/geonames'
+import { getGeoNamesInputEdge, getGeoNamesUiEdges, updateGeoNamesNode } from '@/features/mapping/extensions/modules/nodes/geonames/workflow'
 
 describe('mappingExtensionRegistry', () => {
   beforeEach(() => {
@@ -34,15 +36,44 @@ describe('mappingExtensionRegistry', () => {
 
   it('aggregates packaged node modules into actions and canvas node types', () => {
     expect(mappingNodeActionDefinitions.map(definition => definition.id)).toEqual(
-      expect.arrayContaining(['geonames', 'lobid', 'lat-lng-to-wkt']),
+      expect.arrayContaining(['geonames', 'lobid', 'lat-lng-to-wkt', 'merge']),
     )
     expect(canvasNodeTypes).toMatchObject({
       hubNode: expect.anything(),
       enrichNode: expect.anything(),
       transformNode: expect.anything(),
+      mergeNode: expect.anything(),
       tableNode: expect.anything(),
       shapeNode: expect.anything(),
     })
+  })
+
+  it('switches the selected GeoNames input while preserving output connections', () => {
+    const mappingStore = useMappingStore()
+    const dataStore = useDataStore()
+    const node = addGeoNamesNode(mappingStore)
+    const handler = geoNamesModule.connectionHandlers![0]!
+    const context = { mappingStore, dataStore, sources: [], toast: { add: vi.fn() } }
+    mappingStore.upsertExtensionUiEdge('node.geonames.uiEdges', {
+      id: 'geo-ui:legacy-input', source: 'src:places', sourceHandle: 'h:id', target: node.id, targetHandle: 'geo-input',
+    })
+    const outputEdge = {
+      id: 'geo-ui:output', source: node.id, sourceHandle: 'h:name', target: 'shape:place', targetHandle: 'p:name',
+    }
+    mappingStore.upsertExtensionUiEdge('node.geonames.uiEdges', outputEdge)
+
+    updateGeoNamesNode(mappingStore, dataStore, node.id, { inputMode: 'text' })
+    expect(handler.connect({ source: 'src:places', sourceHandle: 'h:name', target: node.id, targetHandle: 'geo-text-input' }, context)).toBe(true)
+    expect(getGeoNamesInputEdge(mappingStore, node.id)?.targetHandle).toBe('geo-text-input')
+    expect(getGeoNamesUiEdges(mappingStore)).toHaveLength(2)
+    expect(getGeoNamesUiEdges(mappingStore)).toContainEqual(outputEdge)
+
+    updateGeoNamesNode(mappingStore, dataStore, node.id, { inputMode: 'id' })
+    expect(handler.connect({ source: 'src:places', sourceHandle: 'h:id', target: node.id, targetHandle: 'geo-input' }, context)).toBe(true)
+    expect(getGeoNamesInputEdge(mappingStore, node.id)?.targetHandle).toBe('geo-input')
+    expect(getGeoNamesUiEdges(mappingStore)).toHaveLength(2)
+    expect(handler.connect({ source: 'src:places', sourceHandle: 'h:id', target: node.id, targetHandle: 'unknown' }, context)).toBe(false)
+    expect(getGeoNamesUiEdges(mappingStore)).toHaveLength(2)
   })
 
   it('resolves materialized upstream outputs through registered node output handlers', () => {

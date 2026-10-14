@@ -5,16 +5,20 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Listbox from 'primevue/listbox'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import {
   GEONAMES_NODE_STATE_KEY,
-  getGeoNamesInputEdge,
+  getGeoNamesInputEdges,
+  getGeoNamesInputMode,
   updateGeoNamesNode,
 } from '@/features/mapping/extensions/modules/nodes/geonames/workflow'
-import { GEO_NAMES_OUTPUT_OPTIONS, type GeoNamesOutputField } from '@/features/mapping/extensions/modules/nodes/geonames/client'
+import { GEO_NAMES_OUTPUT_OPTIONS, type GeoNamesInputType, type GeoNamesOutputField } from '@/features/mapping/extensions/modules/nodes/geonames/client'
 import type { GeoNamesNodeConfig } from '@/features/mapping/extensions/modules/nodes/geonames/types'
+import { GEONAMES_DEFAULT_OUTPUTS, GEONAMES_INPUT_OPTIONS, geoNamesInputOption } from '@/features/mapping/extensions/modules/nodes/geonames/types'
 import { useDataStore } from '@/stores/dataStore'
 import { useMappingStore } from '@/stores/mappingStore'
+import EnrichmentLookupWarnings from '@/features/mapping/components/EnrichmentLookupWarnings.vue'
 
 const emit = defineEmits<{ added: [] }>()
 
@@ -27,29 +31,32 @@ const data = useDataStore()
 const toast = useToast()
 const currentNode = computed(() => props.nodeId ? mapping.findExtensionNode<GeoNamesNodeConfig>(GEONAMES_NODE_STATE_KEY, props.nodeId) : undefined)
 const username = ref(currentNode.value?.username ?? '')
-const selectedOutputs = ref<GeoNamesOutputField[]>([...(currentNode.value?.selectedOutputs ?? ['name', 'id', 'lat', 'lng'])])
+const inputMode = ref<GeoNamesInputType>(currentNode.value ? getGeoNamesInputMode(mapping, currentNode.value.id) : 'id')
+const inputOptions = [...GEONAMES_INPUT_OPTIONS]
+const selectedInputOption = computed(() => geoNamesInputOption(inputMode.value))
+const selectedOutputs = ref<GeoNamesOutputField[]>([...(currentNode.value?.selectedOutputs ?? GEONAMES_DEFAULT_OUTPUTS)])
 const isSubmitting = ref(false)
 const error = ref<string | null>(null)
 
 const outputOptions = [...GEO_NAMES_OUTPUT_OPTIONS]
 const outputLabelById = new Map(outputOptions.map(option => [option.id, option.name] as const))
 
-const inputConnection = computed(() => {
-  if (!currentNode.value) return null
-  const edge = getGeoNamesInputEdge(mapping, currentNode.value.id)
-  if (!edge) return null
-  const sourceId = edge.source.startsWith('src:') ? edge.source.slice(4) : ''
-  const sourceHeader = edge.sourceHandle.startsWith('h:') ? edge.sourceHandle.slice(2) : ''
-  const source = data.findById(sourceId)
-  if (!source) return { label: `${sourceId} / ${sourceHeader}`, itemCount: 0 }
-  const headerIndex = source.headers.indexOf(sourceHeader)
-  const itemCount = headerIndex >= 0
-    ? source.rows.map(row => String(row[headerIndex] ?? '').trim()).filter(Boolean).length
-    : 0
-  return {
-    label: `${source.name} / ${sourceHeader}`,
-    itemCount,
-  }
+const inputConnections = computed(() => {
+  if (!currentNode.value) return []
+  const edges = getGeoNamesInputEdges(mapping, currentNode.value.id)
+  return selectedInputOption.value.inputs.map(input => {
+    const edge = edges.find(candidate => candidate.targetHandle === input.id)
+    if (!edge) return { label: 'Not connected', itemCount: 0, inputLabel: input.label }
+    const sourceId = edge.source.startsWith('src:') ? edge.source.slice(4) : `merge-output:${edge.source}`
+    const sourceHeader = edge.sourceHandle.startsWith('h:') ? edge.sourceHandle.slice(2) : ''
+    const source = data.findById(sourceId)
+    if (!source) return { label: `${edge.source.startsWith('merge:') ? 'merge' : sourceId} / ${sourceHeader}`, itemCount: 0, inputLabel: input.label }
+    const headerIndex = source.headers.indexOf(sourceHeader)
+    const itemCount = headerIndex >= 0
+      ? source.rows.map(row => String(row[headerIndex] ?? '').trim()).filter(Boolean).length
+      : 0
+    return { label: `${source.name} / ${sourceHeader}`, itemCount, inputLabel: input.label }
+  })
 })
 
 async function addNode(): Promise<void> {
@@ -68,6 +75,7 @@ async function addNode(): Promise<void> {
     if (currentNode.value) {
       updateGeoNamesNode(mapping, data, currentNode.value.id, {
         username: username.value.trim(),
+        inputMode: inputMode.value,
         selectedOutputs: [...selectedOutputs.value],
       })
       toast.add({ severity: 'success', summary: 'GeoNames updated', detail: 'The GeoNames node configuration was saved.', life: 3000 })
@@ -75,7 +83,8 @@ async function addNode(): Promise<void> {
       const createdNode = mapping.createExtensionNode(GEONAMES_NODE_STATE_KEY, 'geonames', id => ({
         id,
         username: username.value.trim(),
-        selectedOutputs: ['name', 'id', 'lat', 'lng'],
+        inputMode: inputMode.value,
+        selectedOutputs: [...GEONAMES_DEFAULT_OUTPUTS],
         status: 'idle',
         stats: { totalCount: 0, processedCount: 0, cachedCount: 0 },
         results: {},
@@ -104,6 +113,20 @@ async function addNode(): Promise<void> {
     </label>
 
     <label class="field field-stack">
+      <span>Input mode</span>
+      <Select
+        v-model="inputMode"
+        :options="inputOptions"
+        option-label="label"
+        option-value="inputType"
+        aria-label="GeoNames input mode"
+        :disabled="currentNode?.status === 'running'"
+        fluid
+      />
+      <span>{{ selectedInputOption.description }}</span>
+    </label>
+
+    <label class="field field-stack">
       <span>Output properties</span>
       <Listbox
         v-model="selectedOutputs"
@@ -123,18 +146,30 @@ async function addNode(): Promise<void> {
     </label>
 
     <Message severity="info" :closable="false">
-      <template v-if="inputConnection">
-        Input connection: {{ inputConnection.label }} ({{ inputConnection.itemCount }} IDs)
+      <template v-if="inputConnections.length">
+        <div v-for="connection in inputConnections" :key="connection.inputLabel">
+          {{ connection.inputLabel }} connection: {{ connection.label }} ({{ connection.itemCount }} values)
+        </div>
       </template>
       <template v-else>
-        Connect a source column to the GeoNames node input in the canvas before running it.
+        Connect {{ selectedInputOption.inputs.map(input => input.label).join(' and ') }} in the canvas before running it.
       </template>
+    </Message>
+
+    <Message severity="info" :closable="false">
+      Saving a different input mode clears previous results and removes incompatible input connections.
+      <template v-if="selectedInputOption.inputs.length === 2">
+        Latitude and longitude must come from the same table. Use decimal degrees: latitude -90 to 90, longitude -180 to 180.
+      </template>
+      Failed lookups leave their output empty and are reported as warnings.
     </Message>
 
     <section class="io-grid flow-io-grid">
       <div class="io-block flow-io-block">
         <h3 class="panel-title">Input</h3>
-        <Tag value="GeoNames ID" severity="info" />
+        <div class="output-list">
+          <Tag v-for="input in selectedInputOption.inputs" :key="input.id" :value="input.label" severity="info" />
+        </div>
       </div>
       <div class="io-block flow-io-block">
         <h3 class="panel-title">Output</h3>
@@ -144,6 +179,7 @@ async function addNode(): Promise<void> {
       </div>
     </section>
 
+    <EnrichmentLookupWarnings :errors="currentNode?.lookupErrors ?? []" />
     <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
 
     <div class="actions actions-row actions-row--start">
@@ -151,6 +187,7 @@ async function addNode(): Promise<void> {
         :label="currentNode ? 'Save GeoNames node' : 'Add GeoNames node'"
         :icon="currentNode ? 'pi pi-check' : 'pi pi-plus'"
         :loading="isSubmitting"
+        :disabled="currentNode?.status === 'running'"
         @click="addNode"
       />
     </div>

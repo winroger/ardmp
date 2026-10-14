@@ -147,6 +147,7 @@ export interface MappingNodeRuntimeContext {
 export interface MappingNodeRuntimeResult {
   successSummary: string
   successDetail?: string
+  successSeverity?: 'success' | 'warn'
 }
 
 export interface MappingNodePreviewContext {

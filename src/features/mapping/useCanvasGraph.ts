@@ -28,6 +28,7 @@ import type { TransformationUiEdge } from '@/features/mapping/extensions/modules
 import type { useDataStore } from '@/stores/dataStore'
 import type { useMappingStore } from '@/stores/mappingStore'
 import { layoutMappingGraph } from '@/services/mapping/graphLayout'
+import { deleteMergeNode, removeMergeInputsFromNode } from '@/features/mapping/extensions/modules/nodes/merge/workflow'
 
 type DataStore = ReturnType<typeof useDataStore>
 type MappingStore = ReturnType<typeof useMappingStore>
@@ -107,7 +108,7 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
         sources: options.sources.value,
       })
       options.toast.add({
-        severity: 'success',
+        severity: result.successSeverity ?? 'success',
         summary: result.successSummary,
         detail: result.successDetail,
         life: 3500,
@@ -141,6 +142,13 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
   }
 
   function deleteConfirmationForNode(nodeId: string): { message: string; successDetail: string; accept: () => void } | null {
+    if (nodeId.startsWith('merge:')) {
+      return {
+        message: 'Delete this merge node and its canvas connections?',
+        successDetail: 'Merge node removed.',
+        accept: () => deleteMergeNode(nodeId, { mappingStore: options.mappingStore, dataStore: options.dataStore, sources: options.sources.value }),
+      }
+    }
     if (nodeId.startsWith('geonames:')) {
       return {
         message: 'Delete this GeoNames node and all of its generated connections?',
@@ -184,6 +192,7 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
     )
     options.dataStore.remove(node?.outputSourceId ?? `geonames-output:${nodeId}`)
     options.dataStore.removeNodeOutputSources(nodeId)
+    removeMergeInputsFromNode(nodeId, { mappingStore: options.mappingStore, dataStore: options.dataStore, sources: options.sources.value })
     options.mappingStore.state.edges = syncGeoNamesShapeMappingsRemoval(nodeId)
 
     for (const transformId of dependentTransformIds) {

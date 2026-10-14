@@ -1,5 +1,6 @@
 import localforage from 'localforage'
 import Geonames from 'geonames.js'
+import { isGeoNamesCoordinateInput, normalizeGeoNamesInputType } from './types'
 
 const cache = localforage.createInstance({
   name: 'architectural-rdm-pipeline-v1',
@@ -34,6 +35,7 @@ export const GEO_NAMES_OUTPUT_OPTIONS = [
 ] as const
 
 export type GeoNamesOutputField = (typeof GEO_NAMES_OUTPUT_OPTIONS)[number]['id']
+export type GeoNamesInputType = 'id' | 'text' | 'coordinates'
 
 export interface GeoNameFeature {
   id: string
@@ -100,8 +102,26 @@ interface GeoNamesJsonResponse {
   }
 }
 
+interface GeoNamesSearchResponse {
+  geonames?: GeoNamesJsonResponse[]
+  status?: GeoNamesJsonResponse['status']
+}
+
+export interface GeoNamesLookupError {
+  input: string
+  message: string
+}
+
+export interface GeoNamesBatchProgress {
+  processedCount: number
+  totalCount: number
+  cachedCount: number
+  lookupErrors: GeoNamesLookupError[]
+}
+
 export interface GeoNamesBatchResult {
   results: Record<string, GeoNameFeature>
+  lookupErrors: GeoNamesLookupError[]
   totalCount: number
   processedCount: number
   cachedCount: number
@@ -140,11 +160,12 @@ export function normalizeGeoNameFeature(response: GeoNamesJsonResponse): GeoName
   }
 }
 
-function cacheKey(username: string, geonameId: string, lang: string): string {
-  return `${username}:${lang}:${geonameId}`
+function cacheKey(username: string, value: string, lang: string, inputType: GeoNamesInputType): string {
+  const prefix = inputType === 'id' ? '' : inputType === 'text' ? 'search:' : 'nearby-place:'
+  return `${username}:${lang}:${prefix}${value}`
 }
 
-async function fetchGeoNameFeatureInternal(geonameId: string, username: string, lang: string): Promise<GeoNameFeature> {
+async function fetchGeoNameFeatureInternal(value: string, username: string, lang: string, inputType: GeoNamesInputType): Promise<GeoNameFeature> {
   const geonames = Geonames({
     username,
     lan: lang,
@@ -152,17 +173,45 @@ async function fetchGeoNameFeatureInternal(geonameId: string, username: string, 
     style: 'FULL',
   })
 
-  const response = await geonames.get({ geonameId }) as GeoNamesJsonResponse
+  if (inputType === 'text') {
+    const response = await geonames.search({ q: value, maxRows: 1, style: 'FULL' }) as GeoNamesSearchResponse
+    const statusMessage = response.status?.message?.trim()
+    if (statusMessage) throw new Error(statusMessage)
+    const match = response.geonames?.[0]
+    if (!match) throw new Error(`No GeoNames match found for "${value}".`)
+    return normalizeGeoNameFeature(match)
+  }
+
+  if (isGeoNamesCoordinateInput(inputType)) {
+    const parts = value.split(',').map(part => part.trim())
+    const lat = Number(parts[0])
+    const lng = Number(parts[1])
+    const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/
+    if (parts.length !== 2 || !parts.every(part => decimal.test(part))
+      || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      throw new Error('Enter valid decimal coordinates: latitude from -90 to 90 and longitude from -180 to 180.')
+    }
+    const params = { lat, lng, maxRows: 1, style: 'FULL' }
+    const response = await geonames.findNearbyPlaceName(params) as GeoNamesSearchResponse
+    const statusMessage = response.status?.message?.trim()
+    if (statusMessage) throw new Error(statusMessage)
+    const match = response.geonames?.[0]
+    if (!match) throw new Error(`No nearby GeoNames match found for "${value}".`)
+    return normalizeGeoNameFeature(match)
+  }
+
+  const response = await geonames.get({ geonameId: value }) as GeoNamesJsonResponse
   return normalizeGeoNameFeature(response)
 }
 
 export async function fetchGeoNameFeature(
   geonameId: string,
   username: string,
-  options?: { lang?: string; forceRefresh?: boolean },
+  options?: { lang?: string; forceRefresh?: boolean; inputType?: GeoNamesInputType },
 ): Promise<{ feature: GeoNameFeature; fromCache: boolean }> {
   const lang = options?.lang ?? 'en'
-  const key = cacheKey(username, geonameId, lang)
+  const inputType = normalizeGeoNamesInputType(options?.inputType)
+  const key = cacheKey(username, geonameId, lang, inputType)
 
   if (!options?.forceRefresh) {
     const cached = await cache.getItem<CachedGeoNameFeature>(key)
@@ -172,7 +221,7 @@ export async function fetchGeoNameFeature(
   const current = inflightRequests.get(key)
   if (current) return { feature: await current, fromCache: false }
 
-  const request = fetchGeoNameFeatureInternal(geonameId, username, lang)
+  const request = fetchGeoNameFeatureInternal(geonameId, username, lang, inputType)
   inflightRequests.set(key, request)
   try {
     const feature = await request
@@ -189,27 +238,35 @@ export async function fetchGeoNameFeatures(
   options?: {
     lang?: string
     forceRefresh?: boolean
-    onProgress?: (progress: { processedCount: number; totalCount: number; cachedCount: number; currentId: string }) => void
+    inputType?: GeoNamesInputType
+    onProgress?: (progress: GeoNamesBatchProgress & { currentId: string }) => void
   },
 ): Promise<GeoNamesBatchResult> {
   const ids = Array.from(new Set(geonameIds.map(id => id.trim()).filter(Boolean)))
-  const results: Record<string, GeoNameFeature> = {}
+  const results: Record<string, GeoNameFeature> = Object.create(null)
+  const lookupErrors: GeoNamesLookupError[] = []
   let processedCount = 0
   let cachedCount = 0
 
   for (const geonameId of ids) {
-    const { feature, fromCache } = await fetchGeoNameFeature(geonameId, username, {
-      lang: options?.lang,
-      forceRefresh: options?.forceRefresh,
-    })
-    results[geonameId] = feature
+    try {
+      const { feature, fromCache } = await fetchGeoNameFeature(geonameId, username, {
+        lang: options?.lang,
+        forceRefresh: options?.forceRefresh,
+        inputType: options?.inputType,
+      })
+      results[geonameId] = feature
+      if (fromCache) cachedCount += 1
+    } catch (error) {
+      lookupErrors.push({ input: geonameId, message: error instanceof Error ? error.message : String(error) })
+    }
     processedCount += 1
-    if (fromCache) cachedCount += 1
-    options?.onProgress?.({ processedCount, totalCount: ids.length, cachedCount, currentId: geonameId })
+    options?.onProgress?.({ processedCount, totalCount: ids.length, cachedCount, currentId: geonameId, lookupErrors: [...lookupErrors] })
   }
 
   return {
     results,
+    lookupErrors,
     totalCount: ids.length,
     processedCount,
     cachedCount,

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Select from 'primevue/select'
 import { Handle, Position } from '@vue-flow/core'
 import { CANVAS_NODE_COLORS } from '@/features/mapping/canvasTheme'
+import EnrichmentLookupWarnings from '@/features/mapping/components/EnrichmentLookupWarnings.vue'
 
 type EnrichNodeOutput = {
   id: string
@@ -16,6 +18,10 @@ const props = defineProps<{
     icon: string
     inputHandleId: string
     inputLabel: string
+    inputs?: EnrichNodeOutput[]
+    inputMode?: string
+    inputModeOptions?: Array<{ id: string; label: string }>
+    onInputModeChange?: (value: string) => void
     status: 'idle' | 'running' | 'success' | 'error'
     processedCount: number
     totalCount: number
@@ -24,6 +30,7 @@ const props = defineProps<{
     actionLabel: string
     footerNote: string
     lastError?: string
+    lookupErrors?: Array<{ input: string; message: string }>
     theme?: {
       headerBackground?: string
       headerColor?: string
@@ -71,6 +78,7 @@ function deleteNode(): void {
   >
     <header>
       <Handle
+        v-if="!data.inputs?.length"
         :id="data.inputHandleId"
         type="target"
         :position="Position.Left"
@@ -91,15 +99,34 @@ function deleteNode(): void {
       </div>
     </header>
 
+    <ul v-if="data.inputs?.length" class="inputs">
+      <li v-for="input in data.inputs" :key="input.id" class="row">
+        <Handle :id="input.id" type="target" :position="Position.Left" class="handle handle-input" />
+        <span>{{ input.label }}</span>
+      </li>
+    </ul>
+
     <div class="body">
       <div class="meta-row">
         <span class="label meta-label">Input</span>
+        <Select
+          v-if="data.inputModeOptions"
+          :model-value="data.inputMode"
+          :options="data.inputModeOptions"
+          option-label="label"
+          option-value="id"
+          aria-label="GeoNames input mode"
+          class="nodrag"
+          :disabled="data.status === 'running'"
+          @update:model-value="data.onInputModeChange?.($event)"
+          @click.stop
+        />
         <span>{{ data.inputLabel }}</span>
       </div>
       <div class="meta-row">
         <span class="label meta-label">Status</span>
-        <span class="status-line" :class="`status-${data.status}`">
-          {{ data.status }}
+        <span class="status-line" :class="data.status === 'success' && data.lookupErrors?.length ? 'status-warning' : `status-${data.status}`">
+          {{ data.status === 'success' && data.lookupErrors?.length ? 'completed with warnings' : data.status }}
           <template v-if="data.totalCount > 0">· {{ data.processedCount }} / {{ data.totalCount }}</template>
           <template v-if="data.cachedCount > 0">· {{ data.cachedCount }} cached</template>
         </span>
@@ -119,6 +146,7 @@ function deleteNode(): void {
     </ul>
 
     <Message v-if="data.lastError" severity="error" :closable="false" class="error-box">{{ data.lastError }}</Message>
+    <EnrichmentLookupWarnings :errors="data.lookupErrors ?? []" class="error-box" />
 
     <footer>
       <Button
@@ -205,6 +233,7 @@ header {
   color: var(--color-text-muted);
 }
 
+.inputs,
 .outputs {
   list-style: none;
   padding: 0;
@@ -242,6 +271,7 @@ footer {
 .status-running { color: var(--enrich-header-subtle); }
 .status-success { color: #166534; }
 .status-error { color: #b91c1c; }
+.status-warning { color: #92400e; }
 
 .error-box {
   margin: 8px 12px 0;

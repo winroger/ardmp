@@ -6,6 +6,7 @@ import { ttlUploadModule } from '@/features/mapping/extensions/modules/shape-sou
 import { geoNamesModule } from '@/features/mapping/extensions/modules/nodes/geonames'
 import { latLngToWktModule } from '@/features/mapping/extensions/modules/nodes/lat-lng-to-wkt'
 import { lobidModule } from '@/features/mapping/extensions/modules/nodes/lobid'
+import { mergeModule } from '@/features/mapping/extensions/modules/nodes/merge'
 
 export const mappingExtensionModules: MappingExtensionModule[] = [
   csvFileModule,
@@ -15,5 +16,6 @@ export const mappingExtensionModules: MappingExtensionModule[] = [
   geoNamesModule,
   lobidModule,
   latLngToWktModule,
+  mergeModule,
 ]
 

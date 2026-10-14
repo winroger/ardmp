@@ -23,7 +23,29 @@ or maintaining one-off conversion scripts.
 - Detect and display table-to-table references from Airtable-style linked
   record fields.
 - Add enrichment nodes for GeoNames and Lobid/GND workflows.
+  Choose the GeoNames input mode from the dropdown on the node or in its
+  configuration: GeoNames ID, free text, or latitude/longitude for the nearest
+  city or populated place. The canvas displays
+  one input for ID/text and two inputs for latitude/longitude. Coordinate fields
+  must come from the same table and use decimal degrees. The coordinate modes use
+  the [GeoNames reverse geocoding service](https://www.geonames.org/export/reverse-geocoding.html).
+  New nodes select Name, ID, Latitude, Longitude, and Country name by
+  default. Other output fields remain available but are initially unselected.
+  Changing mode clears previous results and removes incompatible input connections.
+  Free text uses the first result from the
+  [GeoNames search service](https://www.geonames.org/export/geonames-search.html).
+  Include a country or region for more specific searches. Failed lookups leave
+  their output rows empty while the remaining locations are processed. The node
+  and its configuration panel report each failed input and its error message.
 - Transform latitude/longitude columns into GeoSPARQL WKT points.
+- Combine two or more columns from the same table with the `merge`
+  transformation. Use `Add input` for additional fields. Values are joined in
+  input order with `, `; empty values are skipped. Connect the merged output to
+  a SHACL property or the GeoNames free text input, for example to search for
+  `Berlin, Germany` from separate city and country columns.
+  Merge also accepts fields from the same GeoNames node, for example its Name
+  and Country name outputs. Run GeoNames to populate or refresh the merged
+  output. Connections that would create a cycle are rejected.
 - Generate RDF from the current mapping.
 - Review generated RDF subjects as cards, tables, or Turtle.
 - Validate generated RDF against the loaded SHACL profiles.
