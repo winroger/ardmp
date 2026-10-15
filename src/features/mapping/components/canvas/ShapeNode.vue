@@ -1,11 +1,56 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
+import { computed } from 'vue'
 import type { NodeShape, PropertyShape } from '@/domain/NodeShape'
 import { CANVAS_NODE_COLORS } from '@/features/mapping/canvasTheme'
 import { useShapesStore } from '@/stores/shapesStore'
+import { useMappingStore } from '@/stores/mappingStore'
+import { useDataStore } from '@/stores/dataStore'
+import { identifierValue } from '@/services/mapping/mappingSemantics'
+import { identitySourceForShape, sourceRoot } from '@/services/mapping/entityIdentity'
+import { inheritReferenceIdentifiers, referenceIdentifiers } from '@/services/mapping/referenceIdentifiers'
 
 const props = defineProps<{ data: { shape: NodeShape; onPreview?: () => void } }>()
 const shapes = useShapesStore()
+const mapping = useMappingStore()
+const dataStore = useDataStore()
+const identifierSources = computed(() => {
+  const allShapes = shapes.ap.allNodeShapes()
+  const references = referenceIdentifiers(allShapes, mapping.state, dataStore.sources).filter(item => item.shapeIri === props.data.shape.nodeId.value)
+  const effective = inheritReferenceIdentifiers(allShapes, mapping.state, dataStore.sources)
+  const sourceIds = new Set([...mapping.state.forShape(props.data.shape.nodeId.value).map(edge => edge.sourceId), ...references.map(item => item.sourceId)])
+  const roots = new Map(dataStore.sources.filter(source => sourceIds.has(source.id))
+    .map(source => [sourceRoot(source, dataStore.sources), source]))
+  return [...roots].map(([rootId, mappedSource]) => {
+    const candidates = dataStore.sources.filter(source => sourceRoot(source, dataStore.sources) === rootId)
+    const root = candidates.find(source => source.id === rootId) ?? mappedSource
+    const source = identitySourceForShape(props.data.shape, mappedSource, effective, dataStore.sources)
+    const header = effective.subjectIdentifier(props.data.shape.nodeId.value, source.id)
+    const inherited = references.find(item => item.sourceId === source.id)
+    const index = header ? source.headers.indexOf(header) : -1
+    return {
+      rootId, root, source, candidates, inherited, header: header ?? '',
+      value: header ? identifierOption(source.id, header) : '', missing: Boolean(header && index < 0),
+      emptyCount: header && index >= 0 ? source.rows.filter(row => !identifierValue(row[index])).length : 0,
+    }
+  })
+})
+
+function identifierOption(sourceId: string, header: string): string {
+  return JSON.stringify([sourceId, header])
+}
+
+function chooseIdentifier(rootId: string, event: Event): void {
+  const related = new Set(dataStore.sources.filter(source => sourceRoot(source, dataStore.sources) === rootId).map(source => source.id))
+  mapping.state.subjectIdentifiers = mapping.state.subjectIdentifiers.filter(item =>
+    item.shapeIri !== props.data.shape.nodeId.value || !related.has(item.sourceId),
+  )
+  const value = (event.target as HTMLSelectElement).value
+  if (value) {
+    const [sourceId, header] = JSON.parse(value) as [string, string]
+    mapping.state.setSubjectIdentifier(props.data.shape.nodeId.value, sourceId, header)
+  }
+}
 
 const label = () => props.data.shape.label ?? localName(props.data.shape.nodeId.value)
 const inheritedProperties = () => props.data.shape.properties.filter(property => property.inherited)
@@ -75,6 +120,27 @@ function inheritedFromLabel(p: PropertyShape): string {
         <i class="pi pi-eye" />
       </button>
     </header>
+
+    <section v-if="identifierSources.length" class="subject-identifiers nodrag nowheel">
+      <label v-for="item in identifierSources" :key="item.rootId" class="identifier-field">
+        <span>Subject identifier · {{ item.root.name }}</span>
+        <template v-if="item.inherited">
+          <span class="identifier-value">{{ item.header }} · {{ item.source.name }}</span>
+          <small>Inherited from {{ item.inherited.fromShape.label ?? localName(item.inherited.fromShape.nodeId.value) }} → {{ propertyLabel(item.inherited.property) }}</small>
+        </template>
+        <select v-else :value="item.value" class="form-select" :aria-label="`Subject identifier for ${item.root.name}`" @change="chooseIdentifier(item.rootId, $event)">
+          <option value="">Default ({{ item.root.recordIds ? 'record ID' : item.root.headers[0] ?? 'first column' }} · {{ item.root.name }})</option>
+          <option v-if="item.missing" :value="item.value">{{ item.header }} (missing column)</option>
+          <optgroup v-for="source in item.candidates" :key="source.id" :label="source.name">
+            <option v-for="header in source.headers" :key="header" :value="identifierOption(source.id, header)">{{ header }} · {{ source.name }}</option>
+          </optgroup>
+        </select>
+        <small v-if="item.missing" class="identifier-warning">{{ item.inherited ? 'The connected identifier column is no longer available.' : 'Choose an available identifier column before generating RDF.' }}</small>
+        <small v-else-if="item.emptyCount" class="identifier-warning">{{ item.emptyCount }} row(s) have no valid identifier; their entities are skipped.</small>
+      </label>
+      <small>All fields for this profile use this identifier, including fields from enrichment outputs.</small>
+      <small>Declared references to profiles fed from the same row are linked automatically. A mapped reference column takes precedence.</small>
+    </section>
 
     <div v-if="inheritedProperties().length > 0" class="section-label">Inherited properties</div>
     <ul class="properties">
@@ -202,6 +268,25 @@ header {
 }
 
 .properties { list-style: none; padding: 0; margin: 0; }
+
+.subject-identifiers {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.identifier-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.identifier-value { font-family: var(--font-mono); }
+
+.subject-identifiers small { color: var(--color-text-muted); }
+.subject-identifiers .identifier-warning { color: #92400e; }
 
 .section-label {
   padding: 6px 12px;

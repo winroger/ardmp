@@ -50,7 +50,7 @@ export function materializeLobidOutputSource(
     fields: node.selectedProperties,
     readField: (record, property) => record?.[property] ?? '',
     addResultSource: (headers, rows, recordIds) =>
-      dataStore.addNodeOutputSource('lobid', nodeId, headers, rows, recordIds),
+      dataStore.addNodeOutputSource('lobid', nodeId, headers, rows, recordIds, source.id),
   })
   if (!outputSourceId) return node.outputSourceId
 
@@ -120,7 +120,7 @@ export async function runLobidNode(
       sources,
       forceRefresh,
       addResultSource: (resultNodeId, headers, rows, recordIds) =>
-        dataStore.addNodeOutputSource('lobid', resultNodeId, headers, rows, recordIds),
+        dataStore.addNodeOutputSource('lobid', resultNodeId, headers, rows, recordIds, sourceId),
     })
 
     updateLobidNode(mappingStore, dataStore, nodeId, {

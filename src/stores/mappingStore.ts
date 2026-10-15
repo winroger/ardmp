@@ -170,6 +170,7 @@ export const useMappingStore = defineStore('mapping', () => {
   function createSnapshot(): MappingStoreSnapshot {
     return {
       edges: cloneMappingEdges(state.edges),
+      subjectIdentifiers: state.subjectIdentifiers.map(item => ({ ...item })),
       stagingColumns: cloneStagingColumns(state.stagingColumns),
       extensionState: createExtensionSnapshotState({ mappingStore: extensionStoreApi }),
     }
@@ -177,6 +178,7 @@ export const useMappingStore = defineStore('mapping', () => {
 
   function restoreSnapshot(snapshot: MappingStoreSnapshot): void {
     state.edges = cloneMappingEdges(snapshot.edges)
+    state.subjectIdentifiers = (snapshot.subjectIdentifiers ?? []).map(item => ({ ...item }))
     state.stagingColumns = normalizeStagingColumns(snapshot.stagingColumns)
     restoreExtensionSnapshotState(snapshot.extensionState, { mappingStore: extensionStoreApi })
   }

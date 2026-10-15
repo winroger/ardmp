@@ -71,7 +71,7 @@ export function materializeGeoNamesOutputSource(
     return node.outputSourceId
   }
   const outputSourceId = dataStore.addNodeOutputSource('geonames', nodeId, [...node.selectedOutputs],
-    geoNamesOutputRows(keys, node.results, node.selectedOutputs), alignedRecordIdsForSource(source))
+    geoNamesOutputRows(keys, node.results, node.selectedOutputs), alignedRecordIdsForSource(source), source.id)
 
   if (node.outputSourceId !== outputSourceId) {
     updateGeoNamesNode(mappingStore as GeoNamesMutationStore, dataStore, nodeId, { outputSourceId })
@@ -189,7 +189,7 @@ export async function runGeoNamesNode(
         })
       },
       addResultSource: (resultNodeId, headers, rows, recordIds) =>
-        dataStore.addNodeOutputSource('geonames', resultNodeId, headers as GeoNamesOutputField[], rows, recordIds),
+        dataStore.addNodeOutputSource('geonames', resultNodeId, headers as GeoNamesOutputField[], rows, recordIds, sourceId),
     })
 
     updateGeoNamesNode(mappingStore, dataStore, nodeId, {

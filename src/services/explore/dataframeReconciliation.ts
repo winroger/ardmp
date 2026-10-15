@@ -13,8 +13,9 @@ function currentRootClassIriForSource(
   source: DataSource,
   mapping: MappingState,
   shapes: readonly NodeShape[],
+  sources: readonly DataSource[],
 ): string {
-  const hybridOwner = resolveExplicitHybridOwnerForSource(source, mapping, shapes)
+  const hybridOwner = resolveExplicitHybridOwnerForSource(source, mapping, shapes, sources)
   return (hybridOwner ? hybridTargetClassForOwner(hybridOwner)?.value : undefined) ?? stagingClassForSource(source).value
 }
 
@@ -30,7 +31,7 @@ function inferSourceIdForDataframe(
     .filter(source => isStagingSource(source))
     .find(source => {
       const stagingClassIri = stagingClassForSource(source).value
-      const currentRootClassIri = currentRootClassIriForSource(source, mapping, shapes)
+      const currentRootClassIri = currentRootClassIriForSource(source, mapping, shapes, sources)
       return dataframe.rootClassIri === stagingClassIri || dataframe.rootClassIri === currentRootClassIri
     })
     ?.id
@@ -50,7 +51,7 @@ export function reconcileExploreDataframeDefinition(
     return dataframe.sourceId === sourceId ? dataframe : { ...dataframe, sourceId }
   }
 
-  const currentRootClassIri = currentRootClassIriForSource(source, mapping, shapes)
+  const currentRootClassIri = currentRootClassIriForSource(source, mapping, shapes, sources)
   if (dataframe.rootClassIri === currentRootClassIri && dataframe.sourceId === sourceId) return dataframe
 
   return {

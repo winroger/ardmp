@@ -3,7 +3,9 @@ import type { ApplicationProfile } from '@/domain/NodeShape'
 import { classifyShape } from '@/domain/NodeShape'
 import type { DataSource } from '@/domain/DataSource'
 import { mappingTransformId, type MappingEdge, type MappingState } from '@/domain/Mapping'
-import { INSTANCE_BASE_IRI, instanceTemplateForShape, sourcePathForExport } from '@/services/mapping/mappingSemantics'
+import { INSTANCE_BASE_IRI, instanceTemplateForShape, sourcePathForExport, subjectReferenceForSource } from '@/services/mapping/mappingSemantics'
+import { prepareEntityExport } from '@/services/mapping/entityExport'
+import { identitySourceForShape, sameRowReferences } from '@/services/mapping/entityIdentity'
 import {
   hybridTargetClassForOwner,
   isStagingSource,
@@ -14,6 +16,7 @@ import {
   stagingSubjectTemplateForSource,
 } from '@/services/mapping/stagingSemantics'
 import { findTransformSemanticsHandler } from '@/features/mapping/mappingExtensionRegistry'
+import { inheritReferenceIdentifiers } from '@/services/mapping/referenceIdentifiers'
 
 const RDF_TYPE = namedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
 const RR_TRIPLES_MAP = namedNode('http://www.w3.org/ns/r2rml#TriplesMap')
@@ -32,6 +35,10 @@ const RR_DATATYPE = namedNode('http://www.w3.org/ns/r2rml#datatype')
 const RR_TERM_TYPE = namedNode('http://www.w3.org/ns/r2rml#termType')
 const RR_IRI = namedNode('http://www.w3.org/ns/r2rml#IRI')
 const RR_LITERAL = namedNode('http://www.w3.org/ns/r2rml#Literal')
+const RR_PARENT_TRIPLES_MAP = namedNode('http://www.w3.org/ns/r2rml#parentTriplesMap')
+const RR_JOIN_CONDITION = namedNode('http://www.w3.org/ns/r2rml#joinCondition')
+const RR_CHILD = namedNode('http://www.w3.org/ns/r2rml#child')
+const RR_PARENT = namedNode('http://www.w3.org/ns/r2rml#parent')
 
 export async function serializeMappingAsRml(
   ap: ApplicationProfile,
@@ -56,10 +63,11 @@ export function buildRmlStore(
   setPrefixes(store, sources)
 
   const allShapes = ap.allNodeShapes()
+  mapping = inheritReferenceIdentifiers(allShapes, mapping, sources)
   const sourceMap = new Map(sources.map(source => [source.id, source]))
   const hybridOwnersBySourceId = new Map(
     sources
-      .map(source => [source.id, resolveExplicitHybridOwnerForSource(source, mapping, allShapes)] as const)
+      .map(source => [source.id, resolveExplicitHybridOwnerForSource(source, mapping, allShapes, sources)] as const)
       .filter((entry): entry is readonly [string, NonNullable<ReturnType<typeof resolveExplicitHybridOwnerForSource>>] => Boolean(entry[1])),
   )
 
@@ -80,18 +88,24 @@ export function buildRmlStore(
     for (const [sourceId, sourceEdges] of edgesBySource) {
       const source = sourceMap.get(sourceId)
       if (!source) continue
+      const prepared = prepareEntityExport(shape, source, ap, mapping, sources)
 
       const triplesMap = namedNode(`${INSTANCE_BASE_IRI}mapping/triples-map/${slug(shape.nodeId.value)}-${slug(sourceId)}`)
       store.add(triplesMap, RDF_TYPE, RR_TRIPLES_MAP)
 
       const logicalSource = blankNode()
       store.add(triplesMap, RML_LOGICAL_SOURCE, logicalSource)
-      store.add(logicalSource, RML_SOURCE, literal(sourcePathForExport(source)))
+      store.add(logicalSource, RML_SOURCE, literal(sourcePathForExport(prepared?.source ?? source)))
       store.add(logicalSource, RML_REFERENCE_FORMULATION, QL_CSV)
 
       const subjectMap = blankNode()
       store.add(triplesMap, RR_SUBJECT_MAP, subjectMap)
-      store.add(subjectMap, RR_TEMPLATE, literal(instanceTemplateForShape(shape, source)))
+      if (prepared) {
+        store.add(subjectMap, RML_REFERENCE, literal(prepared.subjectHeader))
+        store.add(subjectMap, RR_TERM_TYPE, RR_IRI)
+      } else {
+        store.add(subjectMap, RR_TEMPLATE, literal(instanceTemplateForShape(shape, source, mapping)))
+      }
       if (shape.targetClass) {
         store.add(subjectMap, RR_CLASS, shape.targetClass)
       }
@@ -105,6 +119,13 @@ export function buildRmlStore(
         store.add(triplesMap, RR_PREDICATE_OBJECT_MAP, predicateObjectMap)
         store.add(predicateObjectMap, RR_PREDICATE, propertyShape.path)
         store.add(predicateObjectMap, RR_OBJECT_MAP, objectMap)
+
+        const referenceHeader = prepared?.referenceHeaders.get(edge.propertyPath)
+        if (referenceHeader) {
+          store.add(objectMap, RML_REFERENCE, literal(referenceHeader))
+          store.add(objectMap, RR_TERM_TYPE, RR_IRI)
+          continue
+        }
 
         const transformHandler = findTransformSemanticsHandler(mappingTransformId(edge))
         if (transformHandler?.buildRmlTemplate) {
@@ -131,6 +152,17 @@ export function buildRmlStore(
           store.add(objectMap, RR_DATATYPE, propertyShape.datatype)
         }
       }
+      for (const reference of sameRowReferences(shape, source, ap, mapping, sources)) {
+        const header = prepared?.referenceHeaders.get(reference.property.path!.value)
+        if (!header) continue
+        const predicateObjectMap = blankNode()
+        const objectMap = blankNode()
+        store.add(triplesMap, RR_PREDICATE_OBJECT_MAP, predicateObjectMap)
+        store.add(predicateObjectMap, RR_PREDICATE, reference.property.path!)
+        store.add(predicateObjectMap, RR_OBJECT_MAP, objectMap)
+        store.add(objectMap, RML_REFERENCE, literal(header))
+        store.add(objectMap, RR_TERM_TYPE, RR_IRI)
+      }
     }
   }
 
@@ -139,6 +171,7 @@ export function buildRmlStore(
 
     const stagingColumns = stagingColumnsForSourceWithRelations(source, mapping, sources)
     const hybridOwner = hybridOwnersBySourceId.get(source.id)
+    const prepared = hybridOwner ? prepareEntityExport(hybridOwner.representativeShape, source, ap, mapping, sources) : undefined
     const subjectTemplate = hybridOwner?.subjectTemplate ?? stagingSubjectTemplateForSource(source)
     if (stagingColumns.length === 0 || !subjectTemplate) continue
 
@@ -147,12 +180,17 @@ export function buildRmlStore(
 
     const logicalSource = blankNode()
     store.add(triplesMap, RML_LOGICAL_SOURCE, logicalSource)
-    store.add(logicalSource, RML_SOURCE, literal(sourcePathForExport(source)))
+    store.add(logicalSource, RML_SOURCE, literal(sourcePathForExport(prepared?.source ?? source)))
     store.add(logicalSource, RML_REFERENCE_FORMULATION, QL_CSV)
 
     const subjectMap = blankNode()
     store.add(triplesMap, RR_SUBJECT_MAP, subjectMap)
-    store.add(subjectMap, RR_TEMPLATE, literal(subjectTemplate))
+    if (prepared) {
+      store.add(subjectMap, RML_REFERENCE, literal(prepared.subjectHeader))
+      store.add(subjectMap, RR_TERM_TYPE, RR_IRI)
+    } else {
+      store.add(subjectMap, RR_TEMPLATE, literal(subjectTemplate))
+    }
     if (!hybridOwner) store.add(subjectMap, RR_CLASS, stagingClassForSource(source))
 
     for (const column of stagingColumns) {
@@ -164,6 +202,16 @@ export function buildRmlStore(
 
       if (column.linkedTargetSourceId) {
         const linkedTargetOwner = hybridOwnersBySourceId.get(column.linkedTargetSourceId)
+        const targetSource = sourceMap.get(column.linkedTargetSourceId)
+        const identitySource = linkedTargetOwner && targetSource ? identitySourceForShape(linkedTargetOwner.representativeShape, targetSource, mapping, sources) : undefined
+        if (linkedTargetOwner && targetSource && identitySource && mapping.subjectIdentifier(linkedTargetOwner.representativeShape.nodeId.value, identitySource.id)) {
+          const join = blankNode()
+          store.add(objectMap, RR_PARENT_TRIPLES_MAP, namedNode(`${INSTANCE_BASE_IRI}mapping/triples-map/${slug(linkedTargetOwner.representativeShape.nodeId.value)}-${slug(targetSource.id)}`))
+          store.add(objectMap, RR_JOIN_CONDITION, join)
+          store.add(join, RR_CHILD, literal(column.header))
+          store.add(join, RR_PARENT, literal(subjectReferenceForSource(targetSource)!))
+          continue
+        }
         const linkedTargetClass = linkedTargetOwner ? hybridTargetClassForOwner(linkedTargetOwner) : undefined
         const linkedTemplate = linkedTargetOwner
           ? `${INSTANCE_BASE_IRI}${localNameOf(linkedTargetClass?.value ?? linkedTargetOwner.representativeShape.nodeId.value) || 'Resource'}/{${column.header}}`

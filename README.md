@@ -20,6 +20,9 @@ or maintaining one-off conversion scripts.
 - Load a built-in showcase project from the mapping view for demonstrations or onboarding.
 - Build mappings visually on a Vue Flow canvas by connecting source columns to
   SHACL property shapes.
+- Choose a subject identifier column for each mapped shape and original table.
+  One table can supply Building, Location, and Stakeholder profiles with
+  separate identifiers, while declared `sh:node` relationships keep them linked.
 - Detect and display table-to-table references from Airtable-style linked
   record fields.
 - Add enrichment nodes for GeoNames and Lobid/GND workflows.
@@ -79,6 +82,50 @@ handover.
 8. Check validation results.
 9. Complete dataset metadata in the Publish view.
 10. Publish the RO-Crate ZIP.
+
+## Entity identifiers and relationships
+
+After mapping a column to a shape, its canvas node shows a **Subject identifier**
+dropdown for each original table. The dropdown groups columns from that table
+and its enrichment outputs. Select the CSV's `building_id` on Building and the
+connect the GeoNames output's `id` to Building's Location (`sh:node`) property.
+For profiles fed from the same original table, the referenced shape inherits
+the connected field as its subject identifier. Location shows that field and
+**Inherited from Building → Location**, instead of a separate selector. This
+also works with a CSV column directly: a `geonames_id` column connected to the
+reference becomes Location's identifier. Building keeps its CSV identifier.
+When GeoNames has not run yet, the inheritance takes effect as soon as its output
+is available. Changing the reference connection updates the inherited identifier;
+removing it restores the independent selector. Saved connections carry this rule
+without storing another primary-key selection on the target shape.
+With target classes `ex:Building` and `ex:Location`, the generated subjects are
+`http://example.org/Building/B1` and `http://example.org/Location/2950159`.
+The selected value supplies the URL suffix; the target class supplies the class
+segment. Without a target class, the shape name supplies that segment. Default
+keeps the existing storage record ID (or first column for a source without record
+IDs) from the original table. Selection changes RDF identity without changing
+source row IDs. All mapped properties for the same profile and original row use
+this identity, including properties supplied by enrichment outputs. Connecting a
+GeoNames ID to Building's Location reference therefore adds a link on the existing
+Building; it does not create a Building whose ID is the GeoNames ID. Multiple
+Buildings keep their individual CSV IDs while sharing one Location.
+
+If Building declares a property with `sh:node ex:LocationShape`, and both shapes
+receive data from the same row, ARDMP automatically links the Building to that
+row's Location. This also works through GeoNames, Lobid, and merge outputs that
+retain their source lineage and row IDs. A reference column explicitly mapped
+to the property takes precedence and defines the target identity for the same
+original table. For unrelated tables, references can contain the target's selected
+ID or an Airtable storage record ID; ARDMP resolves either to the target entity
+URL while preserving that table's independently selected identifier.
+
+Selected identifiers are trimmed and URL-encoded. Repeated IDs share a subject,
+so several buildings can reference one Location. An empty or non-scalar selected
+ID skips that entity and its automatic incoming links; the canvas reports the
+affected row count. A missing selected column requires choosing another column.
+The project saves these choices. RO-Crate exports include generated entity CSVs
+with resolved subject and reference URLs, used by the RML mapping to preserve
+the identities and links shown in the RDF preview.
 
 ## Technology
 

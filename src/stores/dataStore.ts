@@ -25,6 +25,7 @@ export const useDataStore = defineStore('data', () => {
     headers: string[],
     rows: unknown[][],
     recordIds?: string[],
+    inputSourceId?: string,
   ): string {
     const sourceId = `${provider}-output:${nodeId}`
     upsertSource(createNodeOutputTabularSource({
@@ -32,6 +33,7 @@ export const useDataStore = defineStore('data', () => {
       name: `${provider} ${nodeId}`,
       provider,
       nodeId,
+      inputSourceId,
       headers,
       rows,
       recordIds,

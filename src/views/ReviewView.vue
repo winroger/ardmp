@@ -127,6 +127,7 @@ watch(
     () => sources.value.map(s => s.id).join('|'),
     () => nodeShapes.value.length,
     () => mappingStore.state.edges.length,
+    () => JSON.stringify(mappingStore.state.subjectIdentifiers),
     () => JSON.stringify(mappingStore.state.stagingColumns.inactiveColumnsBySource),
   ],
   regenerate,

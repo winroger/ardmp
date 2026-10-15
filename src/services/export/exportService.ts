@@ -15,6 +15,7 @@ import { extractProfileMetadata } from '@/services/export/profileMetadata'
 import type { ApplicationProfile, ShaclProfile } from '@/domain/NodeShape'
 import { mappingSecondarySourceHeader, mappingTransformId, type MappingState } from '@/domain/Mapping'
 import { findTransformSemanticsHandler } from '@/features/mapping/mappingExtensionRegistry'
+import { entityExportSources } from '@/services/mapping/entityExport'
 
 export interface ExportInput {
   projectTitle: string
@@ -77,7 +78,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export async function buildRoCratePackage(input: ExportInput): Promise<ExportPackage> {
   const zip = new JSZip()
   const files: RoCrateFile[] = []
-  const exportSources = [...input.sources, ...buildTransformExportSources(input.mapping, input.sources)]
+  const exportSources = [...input.sources, ...buildTransformExportSources(input.mapping, input.sources), ...entityExportSources(input.ap, input.mapping, input.sources)]
 
   // 1. Generated RDF
   const result = generateRdf(input.ap, input.mapping, input.sources)

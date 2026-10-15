@@ -62,7 +62,7 @@ export function materializeMergeOutputSource(nodeId: string, context: MergeOutpu
   try {
     const { source, indices } = resolveMergeInput(context, nodeId)
     return context.dataStore.addNodeOutputSource('merge', nodeId, [MERGE_OUTPUT_HEADER],
-      source.rows.map(row => [mergeValues(indices.map(index => row[index]))]), alignedRecordIdsForSource(source))
+      source.rows.map(row => [mergeValues(indices.map(index => row[index]))]), alignedRecordIdsForSource(source), source.id)
   } catch {
     context.dataStore.removeNodeOutputSources(nodeId)
     return undefined

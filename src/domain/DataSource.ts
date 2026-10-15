@@ -24,8 +24,9 @@ export interface DataSource {
   /** Optional: internal helper sources should not appear as standalone table nodes. */
   readonly hidden?: boolean
   /**
-   * Optional per-row primary identifiers used as the URI suffix when
-   * generating RDF subjects. When absent the first column value is used.
+   * Optional storage record IDs used for row alignment and linked records.
+   * These are also the default URI suffix unless a shape selects its own
+   * identifier column. When absent the first column is the default.
    */
   readonly recordIds?: string[]
 }
@@ -64,6 +65,7 @@ export type DataSourceOrigin =
       kind: 'node-output'
       provider: string
       nodeId: string
+      inputSourceId?: string
     }
   | {
       kind: 'generated'
@@ -156,6 +158,7 @@ export function createNodeOutputTabularSource(options: {
   name: string
   provider: string
   nodeId: string
+  inputSourceId?: string
   headers: string[]
   rows: unknown[][]
   columns?: DataSourceColumn[]
@@ -175,6 +178,7 @@ export function createNodeOutputTabularSource(options: {
       kind: 'node-output',
       provider: options.provider,
       nodeId: options.nodeId,
+      ...(options.inputSourceId ? { inputSourceId: options.inputSourceId } : {}),
     },
   })
 }

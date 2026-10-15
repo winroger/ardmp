@@ -1,7 +1,7 @@
 import { namedNode, literal, type NamedNode, type Node as RdfNode } from 'rdflib'
 import type { DataSource } from '@/domain/DataSource'
 import type { NodeShape } from '@/domain/NodeShape'
-import type { MappingEdge } from '@/domain/Mapping'
+import type { MappingEdge, MappingState } from '@/domain/Mapping'
 
 export const INSTANCE_BASE_IRI = 'http://example.org/'
 export const AIRTABLE_RECORD_ID_COLUMN = '_recordId'
@@ -38,8 +38,22 @@ export function mintInstanceIri(classIri: string | undefined, id: string, fallba
   return namedNode(`${INSTANCE_BASE_IRI}${segment}/${encodeURIComponent(id)}`)
 }
 
-export function subjectFor(shape: NodeShape, source: DataSource, row: unknown[], rowIdx: number): NamedNode {
-  const id = source.recordIds?.[rowIdx] ?? String(row[0] ?? `${source.id}-row${rowIdx}`)
+export function subjectReferenceForShape(shape: NodeShape, source: DataSource, mapping?: MappingState): string | undefined {
+  const header = mapping?.subjectIdentifier(shape.nodeId.value, source.id)
+  if (header && !source.headers.includes(header)) throw new Error(`Subject identifier column "${header}" is no longer available in ${source.name}.`)
+  return header ?? subjectReferenceForSource(source)
+}
+
+export function identifierValue(value: unknown): string {
+  return value == null || typeof value === 'object' ? '' : String(value).trim()
+}
+
+export function subjectFor(shape: NodeShape, source: DataSource, row: unknown[], rowIdx: number, mapping?: MappingState): NamedNode | undefined {
+  const header = mapping?.subjectIdentifier(shape.nodeId.value, source.id)
+  if (header) subjectReferenceForShape(shape, source, mapping)
+  const id = header ? identifierValue(row[source.headers.indexOf(header)])
+    : source.recordIds?.[rowIdx] ?? String(row[0] ?? `${source.id}-row${rowIdx}`)
+  if (header && !id) return undefined
   const classIri = (shape.targetClass ?? (shape.nodeId.termType === 'NamedNode' ? shape.nodeId : null))?.value
   return mintInstanceIri(classIri, String(id), shape.nodeId.value)
 }
@@ -106,8 +120,8 @@ function sanitizeFileSegment(name: string): string {
   return name.replace(/[^a-z0-9-_]/gi, '_') || 'export'
 }
 
-export function instanceTemplateForShape(shape: NodeShape, source: DataSource): string {
-  const reference = subjectReferenceForSource(source)
+export function instanceTemplateForShape(shape: NodeShape, source: DataSource, mapping?: MappingState): string {
+  const reference = subjectReferenceForShape(shape, source, mapping)
   if (!reference) {
     throw new Error(`Cannot derive subject template for source ${source.id} without an exported identifier column.`)
   }

@@ -33,7 +33,7 @@ export function buildRuntimeStagingShapes(
 ): RuntimeStagingShapes {
   const hybridOwnersBySourceId = new Map(
     sources
-      .map(source => [source.id, resolveExplicitHybridOwnerForSource(source, mapping, baseShapes)] as const)
+      .map(source => [source.id, resolveExplicitHybridOwnerForSource(source, mapping, baseShapes, sources)] as const)
       .filter((entry): entry is readonly [string, NonNullable<ReturnType<typeof resolveExplicitHybridOwnerForSource>>] => Boolean(entry[1])),
   )
 

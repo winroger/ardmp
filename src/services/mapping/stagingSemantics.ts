@@ -3,6 +3,8 @@ import { isCanvasVisibleDataSource, type DataSource } from '@/domain/DataSource'
 import type { NodeShape } from '@/domain/NodeShape'
 import type { MappingState } from '@/domain/Mapping'
 import { detectLinkedColumns, splitLinkedRecordCell } from '@/services/mapping/linkDetector'
+import { createEntitySubjectResolver, identitySourceForShape } from '@/services/mapping/entityIdentity'
+import { inheritReferenceIdentifiers } from '@/services/mapping/referenceIdentifiers'
 import {
   AIRTABLE_RECORD_ID_COLUMN,
   exportedHeadersForSource,
@@ -126,7 +128,9 @@ export function resolveExplicitHybridOwnerForSource(
   source: DataSource,
   mapping: MappingState,
   shapes: readonly NodeShape[],
+  sources: readonly DataSource[] = [source],
 ): ExplicitHybridOwner | undefined {
+  mapping = inheritReferenceIdentifiers(shapes, mapping, sources)
   const shapeLookup = new Map(shapes.map(shape => [shape.nodeId.value, shape]))
   const mappedShapes: NodeShape[] = []
   const seenShapeIds = new Set<string>()
@@ -143,7 +147,7 @@ export function resolveExplicitHybridOwnerForSource(
 
   const shapesByTemplate = new Map<string, NodeShape[]>()
   for (const shape of mappedShapes) {
-    const template = instanceTemplateForShape(shape, source)
+    const template = instanceTemplateForShape(shape, identitySourceForShape(shape, source, mapping, sources), mapping)
     const group = shapesByTemplate.get(template)
     if (group) group.push(shape)
     else shapesByTemplate.set(template, [shape])
@@ -169,8 +173,11 @@ export function subjectForHybridOwnerRow(
   source: DataSource,
   row: unknown[],
   rowIdx: number,
-): NamedNode {
-  return subjectFor(owner.representativeShape, source, row, rowIdx)
+  mapping?: MappingState,
+  sources?: DataSource[],
+): NamedNode | undefined {
+  if (mapping && sources) return createEntitySubjectResolver(mapping, sources)(owner.representativeShape, source, rowIdx)
+  return subjectFor(owner.representativeShape, source, row, rowIdx, mapping)
 }
 
 export function registerStagingPrefixes(store: Store, sources: DataSource[]): void {
@@ -215,6 +222,8 @@ export function stagingTargetSubjectForRecordId(
   targetSource: DataSource | undefined,
   recordId: string,
   hybridOwner: ExplicitHybridOwner | undefined,
+  mapping?: MappingState,
+  sources?: DataSource[],
 ): NamedNode | undefined {
   if (!targetSource?.recordIds?.length) return undefined
   const rowIdx = targetSource.recordIds.indexOf(recordId)
@@ -222,7 +231,7 @@ export function stagingTargetSubjectForRecordId(
 
   if (hybridOwner) {
     const row = targetSource.rows[rowIdx]
-    return row ? subjectForHybridOwnerRow(hybridOwner, targetSource, row, rowIdx) : undefined
+    return row ? subjectForHybridOwnerRow(hybridOwner, targetSource, row, rowIdx, mapping, sources) : undefined
   }
 
   return namedNode(`${ARDMP_STAGING_INSTANCE_BASE}${encodeURIComponent(recordId)}`)
@@ -233,6 +242,7 @@ export function stagingRelationshipObjectsForValue(
   cellValue: unknown,
   allSources: DataSource[],
   hybridOwnersBySourceId: ReadonlyMap<string, ExplicitHybridOwner> = new Map(),
+  mapping?: MappingState,
 ): NamedNode[] {
   if (!column.linkedTargetSourceId) return []
   const targetSource = allSources.find(source => source.id === column.linkedTargetSourceId)
@@ -240,7 +250,7 @@ export function stagingRelationshipObjectsForValue(
     ? hybridOwnersBySourceId.get(column.linkedTargetSourceId)
     : undefined
   return splitLinkedRecordCell(cellValue)
-    .map(recordId => stagingTargetSubjectForRecordId(targetSource, recordId, hybridOwner))
+    .map(recordId => stagingTargetSubjectForRecordId(targetSource, recordId, hybridOwner, mapping, allSources))
     .filter((node): node is NamedNode => Boolean(node))
 }
 

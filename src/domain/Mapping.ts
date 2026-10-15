@@ -39,6 +39,12 @@ import {
 
 export type MappingTransformId = string
 
+export interface SubjectIdentifierMapping {
+  shapeIri: string
+  sourceId: string
+  header: string
+}
+
 export type MappingEdgeSource =
   | { kind: 'table-column' }
   | {
@@ -131,6 +137,7 @@ export function mappingOwnedByNode(edge: MappingEdge, nodeId: string): boolean {
 
 export class MappingState {
   edges: MappingEdge[] = []
+  subjectIdentifiers: SubjectIdentifierMapping[] = []
   stagingColumns: StagingColumnSelectionState = createEmptyStagingColumnSelectionState()
 
   /** Adds or replaces the mapping for a given (shape, property) pair. */
@@ -163,6 +170,15 @@ export class MappingState {
   /** Returns the source ID a shape draws data from (first mapped property). */
   sourceForShape(shapeIri: string): string | undefined {
     return this.forShape(shapeIri)[0]?.sourceId
+  }
+
+  subjectIdentifier(shapeIri: string, sourceId: string): string | undefined {
+    return this.subjectIdentifiers.find(item => item.shapeIri === shapeIri && item.sourceId === sourceId)?.header
+  }
+
+  setSubjectIdentifier(shapeIri: string, sourceId: string, header?: string): void {
+    this.subjectIdentifiers = this.subjectIdentifiers.filter(item => item.shapeIri !== shapeIri || item.sourceId !== sourceId)
+    if (header) this.subjectIdentifiers.push({ shapeIri, sourceId, header })
   }
 
   /** True when at least one edge exists. */
@@ -210,6 +226,7 @@ export class MappingState {
 
   clear(): void {
     this.edges = []
+    this.subjectIdentifiers = []
     this.stagingColumns = createEmptyStagingColumnSelectionState()
   }
 }

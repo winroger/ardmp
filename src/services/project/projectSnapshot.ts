@@ -5,7 +5,7 @@ import {
   type DataSourceOrigin,
 } from '@/domain/DataSource'
 import { parseShaclProfile, type ShaclProfile } from '@/domain/NodeShape'
-import type { MappingEdge } from '@/domain/Mapping'
+import type { MappingEdge, SubjectIdentifierMapping } from '@/domain/Mapping'
 import {
   createEmptyStagingColumnSelectionState,
   type StagingColumnSelectionState,
@@ -43,6 +43,7 @@ export interface UiEdgeSnapshot {
 
 export interface MappingStoreSnapshot {
   edges: MappingEdge[]
+  subjectIdentifiers?: SubjectIdentifierMapping[]
   stagingColumns?: StagingColumnSelectionState
   extensionState: Record<string, unknown>
 }
