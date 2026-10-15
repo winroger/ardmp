@@ -7,7 +7,7 @@ defineProps<{
 }>()
 
 function displayCell(value: unknown): string {
-  if (Array.isArray(value)) return value.map(entry => String(entry)).join(', ')
+  if (Array.isArray(value)) return JSON.stringify(value)
   if (value === null || value === undefined) return ''
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
@@ -35,7 +35,7 @@ function displayCell(value: unknown): string {
           </tbody>
         </table>
       </div>
-      <p v-else class="empty">Connect lat and lng first to inspect the transform input.</p>
+      <p v-else class="empty">Connect the required fields to inspect the transform input.</p>
     </div>
 
     <div class="preview-block">

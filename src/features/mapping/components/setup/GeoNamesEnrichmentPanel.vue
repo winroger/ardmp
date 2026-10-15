@@ -50,7 +50,7 @@ const inputConnections = computed(() => {
     const sourceId = edge.source.startsWith('src:') ? edge.source.slice(4) : `merge-output:${edge.source}`
     const sourceHeader = edge.sourceHandle.startsWith('h:') ? edge.sourceHandle.slice(2) : ''
     const source = data.findById(sourceId)
-    if (!source) return { label: `${edge.source.startsWith('merge:') ? 'merge' : sourceId} / ${sourceHeader}`, itemCount: 0, inputLabel: input.label }
+    if (!source) return { label: `${edge.source.startsWith('merge:') ? 'merge' : edge.source.startsWith('split:') ? 'split' : sourceId} / ${sourceHeader}`, itemCount: 0, inputLabel: input.label }
     const headerIndex = source.headers.indexOf(sourceHeader)
     const itemCount = headerIndex >= 0
       ? source.rows.map(row => String(row[headerIndex] ?? '').trim()).filter(Boolean).length

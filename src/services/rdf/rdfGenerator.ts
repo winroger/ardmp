@@ -5,7 +5,7 @@ import { classifyShape } from '@/domain/NodeShape'
 import { mappingTransformId, type MappingState } from '@/domain/Mapping'
 import type { DataSource } from '@/domain/DataSource'
 import { buildObject, buildObjects, extractValues } from '@/services/mapping/mappingSemantics'
-import { createEntitySubjectResolver, createReferenceResolver, sameRowReferences, sameRowReferenceSubject } from '@/services/mapping/entityIdentity'
+import { createEntityRowResolver, createReferenceResolver, sameRowReferences, sameRowReferenceSubjects } from '@/services/mapping/entityIdentity'
 import {
   resolveExplicitHybridOwnerForSource,
   isStagingSource,
@@ -44,7 +44,7 @@ export function generateRdf(
   )
   const subjects = new Set<string>()
   const resolveReference = createReferenceResolver(mapping, sources)
-  const resolveSubject = createEntitySubjectResolver(mapping, sources)
+  const resolveRows = createEntityRowResolver(mapping, sources)
 
   for (const shape of ap.allNodeShapes()) {
     const kind = classifyShape(shape)
@@ -66,45 +66,45 @@ export function generateRdf(
       const automaticReferences = sameRowReferences(shape, source, ap, mapping, sources)
 
       for (let rowIdx = 0; rowIdx < source.rows.length; rowIdx++) {
-        const row = source.rows[rowIdx]
-        const subject = resolveSubject(shape, source, rowIdx)
-        if (!subject) continue
-        subjects.add(subject.value)
+        for (const { subject, row } of resolveRows(shape, source, rowIdx)) {
+          subjects.add(subject.value)
 
-        const typeNode = shape.targetClass ?? (shape.nodeId.termType === 'NamedNode' ? shape.nodeId as NamedNode : null)
-        if (typeNode) store.add(subject, RDF_TYPE, typeNode)
+          const typeNode = shape.targetClass ?? (shape.nodeId.termType === 'NamedNode' ? shape.nodeId as NamedNode : null)
+          if (typeNode) store.add(subject, RDF_TYPE, typeNode)
 
-        for (const edge of sourceEdges) {
-          const ps = shape.properties.find(p => p.path?.value === edge.propertyPath)
-          if (!ps?.path) continue
-          const headerIdx = source.headers.indexOf(edge.sourceHeader)
-          if (headerIdx < 0) continue
-          const cellValue = row[headerIdx]
-          if (cellValue === null || cellValue === undefined || cellValue === '') continue
+          for (const edge of sourceEdges) {
+            const ps = shape.properties.find(p => p.path?.value === edge.propertyPath)
+            if (!ps?.path) continue
+            const headerIdx = source.headers.indexOf(edge.sourceHeader)
+            if (headerIdx < 0) continue
+            const cellValue = row[headerIdx]
+            if (cellValue === null || cellValue === undefined || cellValue === '') continue
 
-          const refTargetClass = ps.node
-            ? (ap.findNodeShape(ps.node.value)?.targetClass ?? ps.node)
-            : undefined
-          const target = ps.node ? ap.findNodeShape(ps.node.value) : undefined
+            const refTargetClass = ps.node
+              ? (ap.findNodeShape(ps.node.value)?.targetClass ?? ps.node)
+              : undefined
+            const target = ps.node ? ap.findNodeShape(ps.node.value) : undefined
 
-          const transformHandler = findTransformSemanticsHandler(mappingTransformId(edge))
-          if (transformHandler?.buildValue) {
-            const transformedValue = transformHandler.buildValue({ edge, source, row })
-            if (!transformedValue) continue
-            const objects = target ? resolveReference(target, transformedValue)
-              : [buildObject(transformedValue, ps.nodeKind, refTargetClass, ps.datatype)]
-            for (const object of objects) store.add(subject, ps.path, object)
-            continue
+            const transformHandler = findTransformSemanticsHandler(mappingTransformId(edge))
+            if (transformHandler?.buildValue) {
+              const transformedValue = transformHandler.buildValue({ edge, source, row })
+              if (!transformedValue) continue
+              const objects = target ? resolveReference(target, transformedValue)
+                : [buildObject(transformedValue, ps.nodeKind, refTargetClass, ps.datatype)]
+              for (const object of objects) store.add(subject, ps.path, object)
+              continue
+            }
+
+            const objects = target
+              ? extractValues(cellValue, mappingTransformId(edge)).flatMap(value => resolveReference(target, value))
+              : buildObjects(cellValue, mappingTransformId(edge), ps.nodeKind, refTargetClass, ps.datatype)
+            for (const obj of objects) store.add(subject, ps.path, obj)
           }
-
-          const objects = target
-            ? extractValues(cellValue, mappingTransformId(edge)).flatMap(value => resolveReference(target, value))
-            : buildObjects(cellValue, mappingTransformId(edge), ps.nodeKind, refTargetClass, ps.datatype)
-          for (const obj of objects) store.add(subject, ps.path, obj)
-        }
-        for (const reference of automaticReferences) {
-          const object = sameRowReferenceSubject(reference, source, rowIdx, resolveSubject)
-          if (object) store.add(subject, reference.property.path!, object)
+          for (const reference of automaticReferences) {
+            for (const object of sameRowReferenceSubjects(reference, source, rowIdx, resolveRows)) {
+              store.add(subject, reference.property.path!, object)
+            }
+          }
         }
       }
     }
@@ -119,28 +119,27 @@ export function generateRdf(
     const hybridOwner = hybridOwnersBySourceId.get(source.id)
     const stagingClass = hybridOwner ? undefined : stagingClassForSource(source)
     for (let rowIdx = 0; rowIdx < source.rows.length; rowIdx++) {
-      const row = source.rows[rowIdx]
-      const subject = hybridOwner
-        ? resolveSubject(hybridOwner.representativeShape, source, rowIdx)
-        : stagingSubjectForRow(source, rowIdx)
-      if (!subject) continue
+      const stagingSubject = hybridOwner ? undefined : stagingSubjectForRow(source, rowIdx)
+      const entities = hybridOwner ? resolveRows(hybridOwner.representativeShape, source, rowIdx)
+        : stagingSubject ? [{ subject: stagingSubject, row: source.rows[rowIdx] }] : []
+      for (const { subject, row } of entities) {
+        subjects.add(subject.value)
+        if (stagingClass) store.add(subject, RDF_TYPE, stagingClass)
 
-      subjects.add(subject.value)
-      if (stagingClass) store.add(subject, RDF_TYPE, stagingClass)
+        for (const column of stagingColumns) {
+          const headerIdx = source.headers.indexOf(column.header)
+          if (headerIdx < 0) continue
+          const cellValue = row[headerIdx]
+          if (cellValue === null || cellValue === undefined || cellValue === '') continue
 
-      for (const column of stagingColumns) {
-        const headerIdx = source.headers.indexOf(column.header)
-        if (headerIdx < 0) continue
-        const cellValue = row[headerIdx]
-        if (cellValue === null || cellValue === undefined || cellValue === '') continue
+          const relationshipObjects = stagingRelationshipObjectsForValue(column, cellValue, sources, hybridOwnersBySourceId, mapping)
+          if (column.linkedTargetSourceId) {
+            for (const object of relationshipObjects) store.add(subject, column.property, object)
+            continue
+          }
 
-        const relationshipObjects = stagingRelationshipObjectsForValue(column, cellValue, sources, hybridOwnersBySourceId, mapping)
-        if (column.linkedTargetSourceId) {
-          for (const object of relationshipObjects) store.add(subject, column.property, object)
-          continue
+          for (const object of buildObjects(cellValue, undefined, undefined, undefined, undefined)) store.add(subject, column.property, object)
         }
-
-        store.add(subject, column.property, buildObject(String(cellValue), undefined, undefined, undefined))
       }
     }
   }

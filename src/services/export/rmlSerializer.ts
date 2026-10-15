@@ -4,7 +4,7 @@ import { classifyShape } from '@/domain/NodeShape'
 import type { DataSource } from '@/domain/DataSource'
 import { mappingTransformId, type MappingEdge, type MappingState } from '@/domain/Mapping'
 import { INSTANCE_BASE_IRI, instanceTemplateForShape, sourcePathForExport, subjectReferenceForSource } from '@/services/mapping/mappingSemantics'
-import { prepareEntityExport } from '@/services/mapping/entityExport'
+import { prepareEntityExport, prepareStagingExport } from '@/services/mapping/entityExport'
 import { identitySourceForShape, sameRowReferences } from '@/services/mapping/entityIdentity'
 import {
   hybridTargetClassForOwner,
@@ -171,7 +171,7 @@ export function buildRmlStore(
 
     const stagingColumns = stagingColumnsForSourceWithRelations(source, mapping, sources)
     const hybridOwner = hybridOwnersBySourceId.get(source.id)
-    const prepared = hybridOwner ? prepareEntityExport(hybridOwner.representativeShape, source, ap, mapping, sources) : undefined
+    const prepared = hybridOwner ? prepareEntityExport(hybridOwner.representativeShape, source, ap, mapping, sources) : prepareStagingExport(source, ap, mapping, sources)
     const subjectTemplate = hybridOwner?.subjectTemplate ?? stagingSubjectTemplateForSource(source)
     if (stagingColumns.length === 0 || !subjectTemplate) continue
 

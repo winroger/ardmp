@@ -5,8 +5,9 @@ import type { ApplicationProfile, NodeShape } from '@/domain/NodeShape'
 import { classifyShape } from '@/domain/NodeShape'
 import { findTransformSemanticsHandler } from '@/features/mapping/mappingExtensionRegistry'
 import { extractValues, localNameOf } from './mappingSemantics'
-import { createEntitySubjectResolver, createReferenceResolver, identitySourceForShape, sameRowReferences, sameRowReferenceSubject } from './entityIdentity'
+import { createEntityRowResolver, createReferenceResolver, identitySourceForShape, sameRowReferences, sameRowReferenceSubjects } from './entityIdentity'
 import { inheritReferenceIdentifiers } from './referenceIdentifiers'
+import { isStagingSource, resolveExplicitHybridOwnerForSource, stagingSubjectForRow } from './stagingSemantics'
 
 export interface EntityExportSource {
   source: DataSource
@@ -18,6 +19,21 @@ function hash(value: string): string {
   let result = 2166136261
   for (const char of value) result = Math.imul(result ^ char.charCodeAt(0), 16777619)
   return (result >>> 0).toString(16)
+}
+
+function containsArrays(source: DataSource): boolean {
+  return source.rows.some(row => row.some(Array.isArray))
+}
+
+/** Scalar CSV rows for RML; subject identity is resolved before any expansion. */
+function expandedRows(source: DataSource, row: unknown[]): unknown[][] {
+  const cells = source.headers.map((_header, index) => Array.isArray(row[index])
+    ? [...new Set(extractValues(row[index], undefined))] : [row[index] ?? ''])
+  const length = Math.max(1, ...cells.map(values => values.length))
+  // RDF properties are independent values on one subject. Padding avoids a Cartesian
+  // product when several Airtable fields contain arrays, while emitting every value.
+  return Array.from({ length }, (_unused, index) => cells.map((values, column) =>
+    Array.isArray(row[column]) ? values[index] ?? '' : values[0]))
 }
 
 export function prepareEntityExport(shape: NodeShape, source: DataSource, ap: ApplicationProfile, mapping: MappingState, sources: DataSource[]): EntityExportSource | undefined {
@@ -32,7 +48,7 @@ export function prepareEntityExport(shape: NodeShape, source: DataSource, ap: Ap
   const identitySource = identitySourceForShape(shape, source, mapping, sources)
   const customized = identitySource.id !== source.id || mapping.subjectIdentifier(shape.nodeId.value, identitySource.id)
     || explicit.some(item => mapping.subjectIdentifiers.some(identifier => identifier.shapeIri === item.target.nodeId.value))
-  if (!customized && !automatic.length) return undefined
+  if (!customized && !automatic.length && !containsArrays(source)) return undefined
 
   const headers = [...source.headers]
   function allocate(name: string): string {
@@ -48,26 +64,28 @@ export function prepareEntityExport(shape: NodeShape, source: DataSource, ap: Ap
   const rows: unknown[][] = []
   const recordIds: string[] = []
   const resolveReference = createReferenceResolver(mapping, sources)
-  const resolveSubject = createEntitySubjectResolver(mapping, sources)
-  source.rows.forEach((row, rowIdx) => {
-    const subject = resolveSubject(shape, source, rowIdx)
-    if (!subject) return
-    let variants: unknown[][] = [[...source.headers.map((_header, index) => row[index] ?? ''), subject.value]]
-    for (const reference of references) {
-      const explicit = reference.explicit
-      const handler = explicit ? findTransformSemanticsHandler(mappingTransformId(explicit.edge)) : undefined
-      const cell = explicit ? row[source.headers.indexOf(explicit.edge.sourceHeader)] : undefined
-      const valuesToResolve = cell == null || cell === '' ? []
-        : handler?.buildValue ? [handler.buildValue({ edge: explicit!.edge, source, row })].filter((value): value is string => Boolean(value))
-          : extractValues(cell, explicit ? mappingTransformId(explicit.edge) : undefined)
-      const values = reference.explicit
-        ? valuesToResolve.flatMap(value => resolveReference(reference.explicit!.target, value).map(item => item.value))
-        : [sameRowReferenceSubject(reference.automatic!, source, rowIdx, resolveSubject)?.value ?? '']
-      variants = variants.flatMap(variant => (values.length ? values : ['']).map(value => [...variant, value]))
-    }
-    for (const variant of variants) {
-      rows.push(variant)
-      if (source.recordIds) recordIds.push(source.recordIds[rowIdx])
+  const resolveRows = createEntityRowResolver(mapping, sources)
+  source.rows.forEach((_row, rowIdx) => {
+    for (const { subject, row } of resolveRows(shape, source, rowIdx)) {
+      let variants: unknown[][] = expandedRows(source, row).map(variant => [...variant, subject.value])
+      for (const reference of references) {
+        const explicit = reference.explicit
+        const handler = explicit ? findTransformSemanticsHandler(mappingTransformId(explicit.edge)) : undefined
+        variants = variants.flatMap(variant => {
+          const cell = explicit ? variant[source.headers.indexOf(explicit.edge.sourceHeader)] : undefined
+          const valuesToResolve = cell == null || cell === '' ? []
+            : handler?.buildValue ? [handler.buildValue({ edge: explicit!.edge, source, row: variant })].filter((value): value is string => Boolean(value))
+              : extractValues(cell, explicit ? mappingTransformId(explicit.edge) : undefined)
+          const values = explicit
+            ? valuesToResolve.flatMap(value => resolveReference(explicit.target, value).map(item => item.value))
+            : sameRowReferenceSubjects(reference.automatic!, source, rowIdx, resolveRows).map(item => item.value)
+          return (values.length ? values : ['']).map(value => [...variant, value])
+        })
+      }
+      for (const variant of variants) {
+        rows.push(variant)
+        if (source.recordIds) recordIds.push(source.recordIds[rowIdx])
+      }
     }
   })
   const key = `${shape.nodeId.value}:${source.id}`
@@ -80,12 +98,38 @@ export function prepareEntityExport(shape: NodeShape, source: DataSource, ap: Ap
   }
 }
 
+export function prepareStagingExport(source: DataSource, ap: ApplicationProfile, mapping: MappingState, sources: DataSource[]): EntityExportSource | undefined {
+  if (!isStagingSource(source) || !containsArrays(source) || resolveExplicitHybridOwnerForSource(source, mapping, ap.allNodeShapes(), sources)) return undefined
+  let subjectHeader = '__ardmp_subject'
+  while (source.headers.includes(subjectHeader)) subjectHeader = `_${subjectHeader}`
+  const rows: unknown[][] = []
+  const recordIds: string[] = []
+  source.rows.forEach((row, index) => {
+    const subject = stagingSubjectForRow(source, index)
+    if (!subject) return
+    for (const variant of expandedRows(source, row)) {
+      rows.push([...variant, subject.value])
+      if (source.recordIds) recordIds.push(source.recordIds[index])
+    }
+  })
+  return {
+    source: new TabularDataSource({ id: `staging-values:${source.id}`, name: `staging_values_${source.name}_${hash(source.id)}`,
+      headers: [...source.headers, subjectHeader], rows, recordIds: source.recordIds ? recordIds : undefined,
+      role: 'derived', hidden: true, origin: { kind: 'generated', provider: 'entity-mapping' } }),
+    subjectHeader, referenceHeaders: new Map(),
+  }
+}
+
 export function entityExportSources(ap: ApplicationProfile, mapping: MappingState, sources: DataSource[]): DataSource[] {
-  return ap.allNodeShapes().filter(shape => classifyShape(shape) !== 'form').flatMap(shape => {
+  const entities = ap.allNodeShapes().filter(shape => classifyShape(shape) !== 'form').flatMap(shape => {
     const ids = new Set(mapping.forShape(shape.nodeId.value).map(edge => edge.sourceId))
     return sources.filter(source => ids.has(source.id)).flatMap(source => {
       const prepared = prepareEntityExport(shape, source, ap, mapping, sources)
       return prepared ? [prepared.source] : []
     })
   })
+  return [...entities, ...sources.flatMap(source => {
+    const prepared = prepareStagingExport(source, ap, mapping, sources)
+    return prepared ? [prepared.source] : []
+  })]
 }

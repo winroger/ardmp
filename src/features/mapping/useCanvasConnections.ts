@@ -92,7 +92,7 @@ export function useCanvasConnections(options: UseCanvasConnectionsOptions) {
     if (!selectedEdgeId.value) return
 
     const target = event.target as HTMLElement | null
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) return
     if (isStructuralEdge(selectedEdgeId.value)) return
 
     if (deleteSelectedEdge(selectedEdgeId.value)) {

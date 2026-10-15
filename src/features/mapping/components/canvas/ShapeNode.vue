@@ -6,7 +6,7 @@ import { CANVAS_NODE_COLORS } from '@/features/mapping/canvasTheme'
 import { useShapesStore } from '@/stores/shapesStore'
 import { useMappingStore } from '@/stores/mappingStore'
 import { useDataStore } from '@/stores/dataStore'
-import { identifierValue } from '@/services/mapping/mappingSemantics'
+import { identifierValues } from '@/services/mapping/mappingSemantics'
 import { identitySourceForShape, sourceRoot } from '@/services/mapping/entityIdentity'
 import { inheritReferenceIdentifiers, referenceIdentifiers } from '@/services/mapping/referenceIdentifiers'
 
@@ -31,7 +31,8 @@ const identifierSources = computed(() => {
     return {
       rootId, root, source, candidates, inherited, header: header ?? '',
       value: header ? identifierOption(source.id, header) : '', missing: Boolean(header && index < 0),
-      emptyCount: header && index >= 0 ? source.rows.filter(row => !identifierValue(row[index])).length : 0,
+      emptyCount: header && index >= 0 ? source.rows.filter(row => !identifierValues(row[index]).length).length : 0,
+      hasArrayIdentifiers: header && index >= 0 && source.rows.some(row => Array.isArray(row[index])),
     }
   })
 })
@@ -137,6 +138,7 @@ function inheritedFromLabel(p: PropertyShape): string {
         </select>
         <small v-if="item.missing" class="identifier-warning">{{ item.inherited ? 'The connected identifier column is no longer available.' : 'Choose an available identifier column before generating RDF.' }}</small>
         <small v-else-if="item.emptyCount" class="identifier-warning">{{ item.emptyCount }} row(s) have no valid identifier; their entities are skipped.</small>
+        <small v-if="item.hasArrayIdentifiers">Each nonempty array value identifies an entity. Array fields align by position; scalar fields apply to each entity.</small>
       </label>
       <small>All fields for this profile use this identifier, including fields from enrichment outputs.</small>
       <small>Declared references to profiles fed from the same row are linked automatically. A mapped reference column takes precedence.</small>

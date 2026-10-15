@@ -39,8 +39,8 @@ export interface ExportPackage extends ExportResult {
 
 function cellToCsv(value: unknown): string {
   if (value === null || value === undefined) return ''
-  const s = String(value)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  const s = Array.isArray(value) || typeof value === 'object' ? JSON.stringify(value) : String(value)
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
 function sanitize(name: string): string {
@@ -123,7 +123,7 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
     const path = `sources/${sanitize(src.name)}.csv`
     const csvRows = exportedRowsForSource(src)
     const csvHeaders = exportedHeadersForSource(src)
-    const csv = [csvHeaders.join(','), ...csvRows.map(row => row.map(cellToCsv).join(','))].join('\n')
+    const csv = [csvHeaders.map(cellToCsv).join(','), ...csvRows.map(row => row.map(cellToCsv).join(','))].join('\n')
     zip.file(path, csv)
     files.push({
       path,

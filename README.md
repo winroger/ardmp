@@ -43,12 +43,34 @@ or maintaining one-off conversion scripts.
 - Transform latitude/longitude columns into GeoSPARQL WKT points.
 - Combine two or more columns from the same table with the `merge`
   transformation. Use `Add input` for additional fields. Values are joined in
-  input order with `, `; empty values are skipped. Connect the merged output to
+  input order with the editable **Separator**, which defaults to `, `. An empty
+  separator concatenates values directly. Empty values are skipped. Arrays from
+  Airtable contribute their individual elements using the same separator.
+  Connect the merged output to
   a SHACL property or the GeoNames free text input, for example to search for
   `Berlin, Germany` from separate city and country columns.
   Merge also accepts fields from the same GeoNames node, for example its Name
   and Country name outputs. Run GeoNames to populate or refresh the merged
-  output. Connections that would create a cycle are rejected.
+  output. Merge also accepts fields from one upstream split or merge node.
+  Connections that would create a cycle are rejected.
+- Split a field using the `split` transformation and an editable literal
+  separator (default `, `). Choose **Two columns** to split at the first
+  separator into First part and Remaining text. Both columns keep the original
+  row count and record IDs: missing parts remain empty, and additional text
+  stays in the second column. For example, `Paris, France, Europe` becomes
+  `Paris` and `France, Europe`.
+  Choose **Array** to split at every separator into one array cell per row.
+  Existing Airtable arrays keep their elements; a comma inside an array element
+  is not split again. Arrays of objects need a text or ID field extracted first.
+  Split accepts table, GeoNames, merge, or split outputs. Its output columns can
+  feed SHACL properties, merge, another split, or the GeoNames inputs. Changing
+  output mode removes incompatible connections. Settings are saved with projects.
+  Re-run GeoNames after changing its transformation inputs to fetch new lookups.
+  For multiple values on separate lines inside one CSV cell, choose **Array**
+  and the **Line break** separator preset (or enter `\n`). **Space** selects one
+  ordinary space; line breaks and spaces are distinct separators. The separator
+  field also supports `\t` for tabs, `\r\n` for CRLF, and `\\` for a literal
+  backslash. A visible label distinguishes a space from an empty separator.
 - Generate RDF from the current mapping.
 - Review generated RDF subjects as cards, tables, or Turtle.
 - Validate generated RDF against the loaded SHACL profiles.
@@ -60,6 +82,11 @@ or maintaining one-off conversion scripts.
   - materialized enrichment or transform outputs as CSV when they are part of the exportable pipeline state
   - resolved SHACL profiles
   - RML mapping output
+
+Array cells are shown as JSON arrays in previews and archived source CSVs.
+Mapped arrays generate repeated RDF property values rather than ordered RDF
+collections. RML uses additional scalar CSV rows that retain the resolved entity
+URLs, so individual array values (including values containing commas) are preserved.
 
 ## Who It Is For
 
@@ -119,10 +146,19 @@ original table. For unrelated tables, references can contain the target's select
 ID or an Airtable storage record ID; ARDMP resolves either to the target entity
 URL while preserving that table's independently selected identifier.
 
+An array connected to a `sh:node` reference also supplies the referenced shape's
+identifiers: each nonempty value creates a separate entity linked from the
+original row. For example, split a multiline CSV cell into an array, connect it
+to Building's Source reference and Source's URL property. Each URL identifies
+one Source with its own URL, while Building keeps its original ID. When a shape
+uses an array identifier, other array fields align by position; scalar fields
+apply to each entity. Unfilled positions stay empty.
+
 Selected identifiers are trimmed and URL-encoded. Repeated IDs share a subject,
-so several buildings can reference one Location. An empty or non-scalar selected
-ID skips that entity and its automatic incoming links; the canvas reports the
-affected row count. A missing selected column requires choosing another column.
+so several buildings can reference one Location or Source. Empty identifiers,
+objects and nested arrays are skipped; a row with no valid identifier creates
+no entities or automatic incoming links. The canvas reports the affected row
+count. A missing selected column requires choosing another column.
 The project saves these choices. RO-Crate exports include generated entity CSVs
 with resolved subject and reference URLs, used by the RML mapping to preserve
 the identities and links shown in the RDF preview.

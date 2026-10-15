@@ -48,6 +48,10 @@ export function identifierValue(value: unknown): string {
   return value == null || typeof value === 'object' ? '' : String(value).trim()
 }
 
+export function identifierValues(value: unknown): string[] {
+  return [...new Set((Array.isArray(value) ? value : [value]).map(identifierValue).filter(Boolean))]
+}
+
 export function subjectFor(shape: NodeShape, source: DataSource, row: unknown[], rowIdx: number, mapping?: MappingState): NamedNode | undefined {
   const header = mapping?.subjectIdentifier(shape.nodeId.value, source.id)
   if (header) subjectReferenceForShape(shape, source, mapping)

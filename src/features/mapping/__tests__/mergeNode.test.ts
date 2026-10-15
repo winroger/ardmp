@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { mount } from '@vue/test-utils'
+import TransformNode from '@/features/mapping/components/canvas/TransformNode.vue'
 import JSZip from 'jszip'
 import { ApplicationProfile, parseShaclProfile } from '@/domain/NodeShape'
 import { useDataStore } from '@/stores/dataStore'
@@ -54,6 +56,28 @@ describe('merge node', () => {
     expect(mergeValues([null, ''])).toBe('')
   })
 
+  it('edits and saves a literal separator, including empty text, and joins Airtable array elements with it', async () => {
+    const { node, connectInput, canvasContext, dataStore, mappingStore, context } = setup()
+    connectInput(1, 'city')
+    connectInput(2, 'country')
+    const canvasNode = () => buildExtensionCanvasNodes(canvasContext).find(candidate => candidate.id === node.id)!
+    const wrapper = mount(TransformNode, { props: { data: canvasNode().data }, global: { stubs: { Handle: true, Button: true } } })
+    expect(wrapper.find('input').element.value).toBe(', ')
+    await wrapper.find('input').setValue(' | ')
+    expect(dataStore.findById(`merge-output:${node.id}`)!.rows[0]).toEqual(['Berlin | Germany'])
+    const snapshot = mappingStore.createSnapshot()
+    mappingStore.reset()
+    mappingStore.restoreSnapshot(snapshot)
+    expect(materializeMergeOutputSource(node.id, context)).toBe(`merge-output:${node.id}`)
+    expect(dataStore.findById(`merge-output:${node.id}`)!.rows[0]).toEqual(['Berlin | Germany'])
+    await wrapper.setProps({ data: canvasNode().data })
+    await wrapper.find('input').setValue('')
+    expect(dataStore.findById(`merge-output:${node.id}`)!.rows[0]).toEqual(['BerlinGermany'])
+    expect(mergeValues([['A,B', 'C'], '', 'D'], ' | ')).toBe('A,B | C | D')
+    mappingStore.updateExtensionNode(MERGE_NODE_STATE_KEY, node.id, current => ({ id: current.id, inputCount: 2 }))
+    expect(dataStore.findById(materializeMergeOutputSource(node.id, context)!)!.rows[0]).toEqual(['Berlin, Germany'])
+  })
+
   it('starts with two inputs and materializes rows with their original record IDs', () => {
     const { node, connectInput, context, dataStore, canvasContext } = setup()
     const canvasNode = buildExtensionCanvasNodes(canvasContext).find(candidate => candidate.id === node.id)!
@@ -67,6 +91,30 @@ describe('merge node', () => {
       headers: ['merged'], rows: [['Berlin, Germany'], ['Canada'], ['Vancouver'], ['']],
       recordIds: ['row-1', 'row-2', 'row-3', 'row-4'], hidden: true,
     })
+  })
+
+  it('retains a single literal space entered in the separator field through saving and materialization', async () => {
+    const { node, connectInput, canvasContext, mappingStore, context, dataStore } = setup()
+    connectInput(1, 'city')
+    connectInput(2, 'country')
+    const data = () => buildExtensionCanvasNodes(canvasContext).find(candidate => candidate.id === node.id)!.data
+    const wrapper = mount(TransformNode, { props: { data: data() }, global: { stubs: { Handle: true, Button: true } } })
+    await wrapper.find('input').setValue(' ')
+    await wrapper.setProps({ data: data() })
+    expect(wrapper.find('input').element.value).toBe(' ')
+    expect(dataStore.findById(`merge-output:${node.id}`)!.rows[0]).toEqual(['Berlin Germany'])
+    const snapshot = mappingStore.createSnapshot()
+    mappingStore.reset()
+    mappingStore.restoreSnapshot(snapshot)
+    expect(dataStore.findById(materializeMergeOutputSource(node.id, context)!)!.rows[0]).toEqual(['Berlin Germany'])
+    const spaceButton = wrapper.findAll('button').find(button => button.text() === 'Space')!
+    await spaceButton.trigger('click')
+    expect(wrapper.find('.separator-description').text()).toBe('Single space')
+    const newlineButton = wrapper.findAll('button').find(button => button.text() === 'Line break')!
+    await newlineButton.trigger('click')
+    await wrapper.setProps({ data: data() })
+    expect(wrapper.find('input').element.value).toBe('\\n')
+    expect(dataStore.findById(`merge-output:${node.id}`)!.rows[0]).toEqual(['Berlin\nGermany'])
   })
 
   it('adds a third input and uses port order even when connections are made out of order', () => {

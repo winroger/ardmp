@@ -213,20 +213,20 @@ export const geoNamesModule = createMappingExtensionModule({
     {
       id: 'node.geonames.connections',
       canHandleConnection: connection => (
-        ((connection.source?.startsWith('src:') || connection.source?.startsWith('merge:')) && connection.target?.startsWith('geonames:'))
+        ((connection.source?.startsWith('src:') || connection.source?.startsWith('merge:') || connection.source?.startsWith('split:')) && connection.target?.startsWith('geonames:'))
         || (connection.source?.startsWith('geonames:') && connection.target?.startsWith('shape:'))
       ),
       connect: (connection, context) => {
         const sourceHandle = connection.sourceHandle ?? ''
         const targetHandle = connection.targetHandle ?? ''
 
-        if ((connection.source?.startsWith('src:') || connection.source?.startsWith('merge:')) && connection.target?.startsWith('geonames:')) {
+        if ((connection.source?.startsWith('src:') || connection.source?.startsWith('merge:') || connection.source?.startsWith('split:')) && connection.target?.startsWith('geonames:')) {
           const node = getGeoNamesNode(context.mappingStore, connection.target)
           if (!node || node.status === 'running') return false
           const inputMode = getGeoNamesInputMode(context.mappingStore, node.id)
           const ports = geoNamesInputOption(inputMode).inputs
           if (!sourceHandle.startsWith('h:') || !ports.some(input => input.id === targetHandle)) return false
-          if (connection.source.startsWith('merge:') && wouldCreateGeoNamesMergeCycle(connection.source, node.id, context.mappingStore)) {
+          if (!connection.source.startsWith('src:') && wouldCreateGeoNamesMergeCycle(connection.source, node.id, context.mappingStore)) {
             context.toast.add({ severity: 'warn', summary: 'Connection would create a cycle', detail: 'A merge cannot feed a GeoNames node that supplies its own inputs.', life: 4000 })
             return true
           }

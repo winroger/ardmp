@@ -24,7 +24,7 @@ export function sourceRoot(source: DataSource, sources: readonly DataSource[]): 
   return current.id
 }
 
-/** A shape has one identity within an original table and all its derived outputs. */
+/** A shape shares its identifier column across an original table and its derived outputs. */
 export function identitySourceForShape(shape: NodeShape, source: DataSource, mapping: MappingState, sources: readonly DataSource[]): DataSource {
   const root = sourceRoot(source, sources)
   const related = sources.filter(item => sourceRoot(item, sources) === root)
@@ -39,7 +39,16 @@ export function identitySourceForShape(shape: NodeShape, source: DataSource, map
 
 export type EntitySubjectResolver = (shape: NodeShape, source: DataSource, rowIdx: number) => NamedNode | undefined
 
-export function createEntitySubjectResolver(mapping: MappingState, sources: DataSource[]): EntitySubjectResolver {
+export interface EntityRow {
+  subject: NamedNode
+  row: unknown[]
+  identifier: string
+}
+
+export type EntityRowResolver = (shape: NodeShape, source: DataSource, rowIdx: number) => EntityRow[]
+
+/** Resolve identity before expanding a table row, preserving the original record lineage. */
+export function createEntityRowResolver(mapping: MappingState, sources: DataSource[]): EntityRowResolver {
   const identities = new Map<string, DataSource>()
   const rowIndexes = new Map<string, Map<string, number[]>>()
   return (shape, source, rowIdx) => {
@@ -64,13 +73,34 @@ export function createEntitySubjectResolver(mapping: MappingState, sources: Data
           rowIndexes.set(identity.id, index)
         }
         const matches = index.get(key)
-        if (matches?.length !== 1) return undefined
+        if (matches?.length !== 1) return []
         identityRowIdx = matches[0]
       }
     }
-    const row = identity.rows[identityRowIdx]
-    return row ? subjectFor(shape, identity, row, identityRowIdx, mapping) : undefined
+    const identityRow = identity.rows[identityRowIdx]
+    const row = source.rows[rowIdx]
+    if (!identityRow || !row) return []
+    const header = mapping.subjectIdentifier(shape.nodeId.value, identity.id)
+    const column = header ? identity.headers.indexOf(header) : -1
+    const value = identityRow[column]
+    if (header && Array.isArray(value)) {
+      return value.flatMap((item, index) => {
+        const identifier = identifierValue(item)
+        if (!identifier) return []
+        const scalarIdentity = [...identityRow]
+        scalarIdentity[column] = identifier
+        const subject = subjectFor(shape, identity, scalarIdentity, identityRowIdx, mapping)
+        return subject ? [{ subject, identifier, row: row.map(cell => Array.isArray(cell) ? cell[index] ?? '' : cell) }] : []
+      })
+    }
+    const subject = subjectFor(shape, identity, identityRow, identityRowIdx, mapping)
+    return subject ? [{ subject, row, identifier: header ? identifierValue(value) : identifierValue(identity.recordIds?.[identityRowIdx] ?? identityRow[0]) }] : []
   }
+}
+
+export function createEntitySubjectResolver(mapping: MappingState, sources: DataSource[]): EntitySubjectResolver {
+  const resolve = createEntityRowResolver(mapping, sources)
+  return (shape, source, rowIdx) => resolve(shape, source, rowIdx)[0]?.subject
 }
 
 export function sameRowReferences(shape: NodeShape, source: DataSource, ap: ApplicationProfile, mapping: MappingState, sources: DataSource[]): SameRowReference[] {
@@ -91,23 +121,22 @@ function rowKey(source: DataSource, rowIdx: number): string {
   return String(source.recordIds?.[rowIdx] ?? source.rows[rowIdx]?.[0] ?? `${source.id}-row${rowIdx}`)
 }
 
-export function sameRowReferenceSubject(reference: SameRowReference, source: DataSource, rowIdx: number, resolveSubject: EntitySubjectResolver): NamedNode | undefined {
+export function sameRowReferenceSubjects(reference: SameRowReference, source: DataSource, rowIdx: number, resolveRows: EntityRowResolver): NamedNode[] {
   let targetRowIdx = rowIdx
   if (reference.source.id !== source.id) {
     const key = rowKey(source, rowIdx)
     if (reference.source.rows.length !== source.rows.length || rowKey(reference.source, rowIdx) !== key) {
       const matches = reference.source.rows.flatMap((_row, index) => rowKey(reference.source, index) === key ? [index] : [])
-      if (matches.length !== 1) return undefined
+      if (matches.length !== 1) return []
       targetRowIdx = matches[0]
     }
   }
-  const row = reference.source.rows[targetRowIdx]
-  return row ? resolveSubject(reference.target, reference.source, targetRowIdx) : undefined
+  return resolveRows(reference.target, reference.source, targetRowIdx).map(item => item.subject)
 }
 
 export function createReferenceResolver(mapping: MappingState, sources: DataSource[]) {
   const indexes = new Map<string, { identifiers: Map<string, NamedNode[]>; records: Map<string, NamedNode[]> }>()
-  const resolveSubject = createEntitySubjectResolver(mapping, sources)
+  const resolveRows = createEntityRowResolver(mapping, sources)
   return (target: NodeShape, value: string): NamedNode[] => {
     let lookup = indexes.get(target.nodeId.value)
     if (!lookup) {
@@ -115,16 +144,24 @@ export function createReferenceResolver(mapping: MappingState, sources: DataSour
       const targetSources = sources.filter(source => mapping.forShape(target.nodeId.value).some(edge => edge.sourceId === source.id))
       const ids = new Set(targetSources.flatMap(source => [source.id, identitySourceForShape(target, source, mapping, sources).id]))
       for (const source of sources.filter(item => ids.has(item.id))) {
-        const header = mapping.subjectIdentifier(target.nodeId.value, source.id)
         source.rows.forEach((row, index) => {
           const record = identifierValue(source.recordIds?.[index] ?? row[0])
-          const identifier = header ? identifierValue(row[source.headers.indexOf(header)]) : record
-          const subject = resolveSubject(target, source, index)
-          for (const [key, values] of [[identifier, lookup!.identifiers], [record, lookup!.records]] as const) {
-            if (!key) continue
-            const subjects = values.get(key) ?? []
-            if (subject) subjects.push(subject)
-            values.set(key, subjects)
+          const entities = resolveRows(target, source, index)
+          // Keep known empty records in the index so failed IDs cannot mint fallback entities.
+          if (record && !lookup!.records.has(record)) lookup!.records.set(record, [])
+          const identity = identitySourceForShape(target, source, mapping, sources)
+          if (identity.id === source.id) {
+            const header = mapping.subjectIdentifier(target.nodeId.value, source.id)
+            const key = identifierValue(header ? row[source.headers.indexOf(header)] : record)
+            if (key && !lookup!.identifiers.has(key)) lookup!.identifiers.set(key, [])
+          }
+          for (const { identifier, subject } of entities) {
+            for (const [key, values] of [[identifier, lookup!.identifiers], [record, lookup!.records]] as const) {
+              if (!key) continue
+              const subjects = values.get(key) ?? []
+              subjects.push(subject)
+              values.set(key, subjects)
+            }
           }
         })
       }

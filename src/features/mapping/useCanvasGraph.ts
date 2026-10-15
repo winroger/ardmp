@@ -29,6 +29,8 @@ import type { useDataStore } from '@/stores/dataStore'
 import type { useMappingStore } from '@/stores/mappingStore'
 import { layoutMappingGraph } from '@/services/mapping/graphLayout'
 import { deleteMergeNode, removeMergeInputsFromNode } from '@/features/mapping/extensions/modules/nodes/merge/workflow'
+import { deleteSplitNode } from '@/features/mapping/extensions/modules/nodes/split/workflow'
+import { refreshTextTransforms } from '@/features/mapping/extensions/core/textTransformGraph'
 
 type DataStore = ReturnType<typeof useDataStore>
 type MappingStore = ReturnType<typeof useMappingStore>
@@ -142,6 +144,12 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
   }
 
   function deleteConfirmationForNode(nodeId: string): { message: string; successDetail: string; accept: () => void } | null {
+    if (nodeId.startsWith('split:')) {
+      return {
+        message: 'Delete this split node and its canvas connections?', successDetail: 'Split node removed.',
+        accept: () => deleteSplitNode(nodeId, { mappingStore: options.mappingStore, dataStore: options.dataStore, sources: options.sources.value }),
+      }
+    }
     if (nodeId.startsWith('merge:')) {
       return {
         message: 'Delete this merge node and its canvas connections?',
@@ -284,6 +292,15 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
     }
     edges.value = allEdges
   }
+
+  watch(
+    () => options.sources.value.filter(isVisibleSource),
+    (current, previous) => {
+      if (previous && current.length === previous.length && current.every((source, index) => source === previous[index])) return
+      refreshTextTransforms({ mappingStore: options.mappingStore, dataStore: options.dataStore, sources: options.sources.value })
+    },
+    { immediate: true },
+  )
 
   watch(
     [

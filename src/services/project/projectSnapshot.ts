@@ -239,7 +239,14 @@ export function serializeProjectSnapshot(snapshot: ProjectSnapshot): string {
 }
 
 function cloneRows(rows: unknown[][]): unknown[][] {
-  return rows.map(row => [...row])
+  return rows.map(row => row.map(cloneCell))
+}
+
+function cloneCell(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cloneCell)
+  if (value instanceof Date) return new Date(value)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, cloneCell(entry)]))
+  return value
 }
 
 function cloneColumns(columns: DataSourceColumn[] | undefined): DataSourceColumn[] | undefined {

@@ -36,13 +36,14 @@ describe('mappingExtensionRegistry', () => {
 
   it('aggregates packaged node modules into actions and canvas node types', () => {
     expect(mappingNodeActionDefinitions.map(definition => definition.id)).toEqual(
-      expect.arrayContaining(['geonames', 'lobid', 'lat-lng-to-wkt', 'merge']),
+      expect.arrayContaining(['geonames', 'lobid', 'lat-lng-to-wkt', 'merge', 'split']),
     )
     expect(canvasNodeTypes).toMatchObject({
       hubNode: expect.anything(),
       enrichNode: expect.anything(),
       transformNode: expect.anything(),
       mergeNode: expect.anything(),
+      splitNode: expect.anything(),
       tableNode: expect.anything(),
       shapeNode: expect.anything(),
     })

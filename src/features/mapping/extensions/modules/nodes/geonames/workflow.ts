@@ -153,7 +153,7 @@ export async function runGeoNamesNode(
     const { resolveMaterializedNodeOutputSource } = await import('@/features/mapping/mappingExtensionRegistry')
     sourceId = resolveMaterializedNodeOutputSource(inputEdge.source, { mappingStore, dataStore, sources })
   }
-  if (!sourceId) throw new Error('Connect at least two fields to the merge node before running GeoNames.')
+  if (!sourceId) throw new Error('Complete the connected transformation inputs before running GeoNames.')
   const connectedSource = dataStore.findById(sourceId)
   const runtimeSources = !inputEdge.source.startsWith('src:') && connectedSource
     ? [...sources.filter(source => source.id !== sourceId), connectedSource]

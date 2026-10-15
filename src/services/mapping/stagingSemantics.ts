@@ -3,7 +3,7 @@ import { isCanvasVisibleDataSource, type DataSource } from '@/domain/DataSource'
 import type { NodeShape } from '@/domain/NodeShape'
 import type { MappingState } from '@/domain/Mapping'
 import { detectLinkedColumns, splitLinkedRecordCell } from '@/services/mapping/linkDetector'
-import { createEntitySubjectResolver, identitySourceForShape } from '@/services/mapping/entityIdentity'
+import { createEntityRowResolver, createEntitySubjectResolver, identitySourceForShape } from '@/services/mapping/entityIdentity'
 import { inheritReferenceIdentifiers } from '@/services/mapping/referenceIdentifiers'
 import {
   AIRTABLE_RECORD_ID_COLUMN,
@@ -249,6 +249,13 @@ export function stagingRelationshipObjectsForValue(
   const hybridOwner = column.linkedTargetSourceId
     ? hybridOwnersBySourceId.get(column.linkedTargetSourceId)
     : undefined
+  if (hybridOwner && targetSource && mapping) {
+    const resolveRows = createEntityRowResolver(mapping, allSources)
+    return splitLinkedRecordCell(cellValue).flatMap(recordId => {
+      const index = targetSource.recordIds?.indexOf(recordId) ?? -1
+      return index < 0 ? [] : resolveRows(hybridOwner.representativeShape, targetSource, index).map(item => item.subject)
+    })
+  }
   return splitLinkedRecordCell(cellValue)
     .map(recordId => stagingTargetSubjectForRecordId(targetSource, recordId, hybridOwner, mapping, allSources))
     .filter((node): node is NamedNode => Boolean(node))

@@ -7,6 +7,7 @@ import { geoNamesModule } from '@/features/mapping/extensions/modules/nodes/geon
 import { latLngToWktModule } from '@/features/mapping/extensions/modules/nodes/lat-lng-to-wkt'
 import { lobidModule } from '@/features/mapping/extensions/modules/nodes/lobid'
 import { mergeModule } from '@/features/mapping/extensions/modules/nodes/merge'
+import { splitModule } from '@/features/mapping/extensions/modules/nodes/split'
 
 export const mappingExtensionModules: MappingExtensionModule[] = [
   csvFileModule,
@@ -17,5 +18,6 @@ export const mappingExtensionModules: MappingExtensionModule[] = [
   lobidModule,
   latLngToWktModule,
   mergeModule,
+  splitModule,
 ]
 

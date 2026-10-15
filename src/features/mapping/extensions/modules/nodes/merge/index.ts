@@ -24,7 +24,13 @@ export const mergeModule = createMappingExtensionModule({
       return {
         id: node.id, type: 'mergeNode', position: { x: 0, y: 0 },
         data: {
-          title: 'merge', subtitle: 'Join fields with ", "', icon: 'pi pi-arrows-h',
+          title: 'merge', subtitle: 'Join fields', icon: 'pi pi-arrows-h',
+          separator: node.separator ?? ', ',
+          onSeparatorChange: (separator: string) => {
+            context.mappingStore.updateExtensionNode<MergeNodeConfig>(MERGE_NODE_STATE_KEY, node.id, current => ({ ...current, separator }))
+            syncMergeShapeMappings(node.id, { ...context, sources: context.dataStore.sources })
+          },
+          note: 'Join nonempty values in input order. Array elements use the same separator.',
           inputs: Array.from({ length: node.inputCount }, (_, index) => {
             const id = `merge-input-${index + 1}`
             const input = inputs.find(edge => edge.targetHandle === id)
@@ -52,6 +58,7 @@ export const mergeModule = createMappingExtensionModule({
       try {
         const { source, headers, indices } = resolveMergeInput(context, nodeId)
         const outputId = materializeMergeOutputSource(nodeId, context)
+        if (!outputId) throw new Error('Extract a text or ID field from objects before merging.')
         context.openPairedSourcePreview({
           ...source, id: `${nodeId}:input-preview`, name: 'merge inputs', headers,
           rows: source.rows.map(row => indices.map(index => row[index])),
@@ -67,12 +74,12 @@ export const mergeModule = createMappingExtensionModule({
     connect: (connection, context) => {
       const sourceHandle = connection.sourceHandle ?? ''
       const targetHandle = connection.targetHandle ?? ''
-      if ((connection.source?.startsWith('src:') || connection.source?.startsWith('geonames:')) && connection.target?.startsWith('merge:')) {
+      if (connection.source && /^(src:|geonames:|merge:|split:)/.test(connection.source) && connection.target?.startsWith('merge:')) {
         const node = context.mappingStore.findExtensionNode<MergeNodeConfig>(MERGE_NODE_STATE_KEY, connection.target)
         const inputNumber = Number(targetHandle.replace('merge-input-', ''))
         if (!node || !sourceHandle.startsWith('h:') || !/^merge-input-[1-9]\d*$/.test(targetHandle) || inputNumber > node.inputCount) return false
         if (wouldCreateGeoNamesMergeCycle(connection.source, node.id, context.mappingStore)) {
-          context.toast.add({ severity: 'warn', summary: 'Connection would create a cycle', detail: 'A GeoNames node cannot feed a merge that supplies its own input.', life: 4000 })
+          context.toast.add({ severity: 'warn', summary: 'Connection would create a cycle', detail: 'A node cannot receive its own output through other nodes.', life: 4000 })
           return true
         }
         const otherInputs = getMergeInputs(context.mappingStore, node.id).filter(edge => edge.targetHandle !== targetHandle)

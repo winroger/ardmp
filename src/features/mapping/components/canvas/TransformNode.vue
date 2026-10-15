@@ -2,6 +2,7 @@
 import Button from 'primevue/button'
 import { Handle, Position } from '@vue-flow/core'
 import { CANVAS_NODE_COLORS } from '@/features/mapping/canvasTheme'
+import { ref, watch } from 'vue'
 
 type TransformNodePort = {
   id: string
@@ -29,8 +30,48 @@ const props = defineProps<{
     onPreview?: () => void
     onDelete?: () => void
     onAddInput?: () => void
+    separator?: string
+    onSeparatorChange?: (value: string) => void
+    mode?: string
+    modeOptions?: { value: string; label: string }[]
+    onModeChange?: (value: string) => void
+    note?: string
   }
 }>()
+
+function separatorText(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t')
+}
+
+function separatorValue(value: string): string {
+  const escapes: Record<string, string> = { '\\': '\\', n: '\n', r: '\r', t: '\t' }
+  return value.replace(/\\([\\nrt])/g, (_match, escape: string) => escapes[escape])
+}
+
+const separatorDraft = ref(separatorText(props.data.separator ?? ''))
+watch(() => props.data.separator, value => {
+  if (separatorValue(separatorDraft.value) !== (value ?? '')) separatorDraft.value = separatorText(value ?? '')
+})
+
+function editSeparator(event: Event): void {
+  separatorDraft.value = (event.target as HTMLInputElement).value
+  props.data.onSeparatorChange?.(separatorValue(separatorDraft.value))
+}
+
+function selectSeparator(value: string): void {
+  separatorDraft.value = separatorText(value)
+  props.data.onSeparatorChange?.(value)
+}
+
+function separatorDescription(): string {
+  const value = separatorValue(separatorDraft.value)
+  if (!value) return 'Empty separator'
+  if (value === ' ') return 'Single space'
+  if (value === '\n') return 'Line break'
+  if (value === '\r\n') return 'Line break (CRLF)'
+  if (value === '\t') return 'Tab'
+  return `Separator: ${JSON.stringify(value)}`
+}
 
 function previewNode(): void {
   props.data.onPreview?.()
@@ -68,6 +109,28 @@ function deleteNode(): void {
         </button>
       </div>
     </header>
+
+    <div v-if="data.onSeparatorChange || data.onModeChange" class="configuration nodrag nowheel nokey" @keydown.stop @keyup.stop>
+      <label v-if="data.onModeChange">
+        <span>Output</span>
+        <select :value="data.mode" aria-label="Split output mode" @change="data.onModeChange?.(($event.target as HTMLSelectElement).value)">
+          <option v-for="option in data.modeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+      <label v-if="data.onSeparatorChange">
+        <span>Separator</span>
+        <input type="text" :value="separatorDraft" aria-label="Separator" autocomplete="off" spellcheck="false" @input="editSeparator" />
+      </label>
+      <template v-if="data.onSeparatorChange">
+        <div class="separator-presets">
+          <button type="button" @click.stop="selectSeparator(' ')">Space</button>
+          <button type="button" @click.stop="selectSeparator('\n')">Line break</button>
+        </div>
+        <small class="separator-description" aria-live="polite">{{ separatorDescription() }}</small>
+        <small>Use \n for line breaks or \t for tabs.</small>
+      </template>
+      <small v-if="data.note">{{ data.note }}</small>
+    </div>
 
     <ul class="inputs">
       <li v-for="input in data.inputs" :key="input.id" class="row">
@@ -144,6 +207,13 @@ header {
   padding: 0;
   margin: 0;
 }
+
+.configuration { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--color-border); }
+.configuration label { display: flex; flex-direction: column; gap: 4px; }
+.configuration input, .configuration select { padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-1); color: var(--color-text); }
+.configuration small { max-width: 280px; color: var(--color-text-muted); }
+.separator-presets { display: flex; gap: 6px; }
+.separator-presets button { padding: 3px 8px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-2); color: var(--color-text); cursor: pointer; }
 
 .row,
 .output-row {
