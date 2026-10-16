@@ -60,7 +60,7 @@ export const splitModule = createMappingExtensionModule({
       const sourceHandle = connection.sourceHandle ?? ''
       const targetHandle = connection.targetHandle ?? ''
       if (!sourceHandle.startsWith('h:') || !connection.source || !connection.target) return false
-      if (/^(src:|geonames:|merge:|split:)/.test(connection.source) && connection.target.startsWith('split:')) {
+      if (/^(src:|geonames:|merge:|split:|hash:)/.test(connection.source) && connection.target.startsWith('split:')) {
         if (targetHandle !== 'split-input' || !context.mappingStore.findExtensionNode(SPLIT_NODE_STATE_KEY, connection.target)) return false
         if (wouldCreateTextCycle(connection.source, connection.target, context.mappingStore)) {
           context.toast.add({ severity: 'warn', summary: 'Connection would create a cycle', life: 4000 })

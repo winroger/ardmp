@@ -110,7 +110,7 @@ function deleteNode(): void {
       </div>
     </header>
 
-    <div v-if="data.onSeparatorChange || data.onModeChange" class="configuration nodrag nowheel nokey" @keydown.stop @keyup.stop>
+    <div v-if="data.onSeparatorChange || data.onModeChange || data.note" class="configuration nodrag nowheel nokey" @keydown.stop @keyup.stop>
       <label v-if="data.onModeChange">
         <span>Output</span>
         <select :value="data.mode" aria-label="Split output mode" @change="data.onModeChange?.(($event.target as HTMLSelectElement).value)">

@@ -30,6 +30,7 @@ import type { useMappingStore } from '@/stores/mappingStore'
 import { layoutMappingGraph } from '@/services/mapping/graphLayout'
 import { deleteMergeNode, removeMergeInputsFromNode } from '@/features/mapping/extensions/modules/nodes/merge/workflow'
 import { deleteSplitNode } from '@/features/mapping/extensions/modules/nodes/split/workflow'
+import { deleteHashNode } from '@/features/mapping/extensions/modules/nodes/hash/workflow'
 import { refreshTextTransforms } from '@/features/mapping/extensions/core/textTransformGraph'
 
 type DataStore = ReturnType<typeof useDataStore>
@@ -144,6 +145,12 @@ export function useCanvasGraph(options: UseCanvasGraphOptions) {
   }
 
   function deleteConfirmationForNode(nodeId: string): { message: string; successDetail: string; accept: () => void } | null {
+    if (nodeId.startsWith('hash:')) {
+      return {
+        message: 'Delete this HASH node and its canvas connections?', successDetail: 'HASH node removed.',
+        accept: () => deleteHashNode(nodeId, { mappingStore: options.mappingStore, dataStore: options.dataStore, sources: options.sources.value }),
+      }
+    }
     if (nodeId.startsWith('split:')) {
       return {
         message: 'Delete this split node and its canvas connections?', successDetail: 'Split node removed.',

@@ -71,6 +71,18 @@ or maintaining one-off conversion scripts.
   ordinary space; line breaks and spaces are distinct separators. The separator
   field also supports `\t` for tabs, `\r\n` for CRLF, and `\\` for a literal
   backslash. A visible label distinguishes a space from an empty separator.
+- Create reproducible identifiers with the **HASH** transformation. Connect a
+  name field (for example `XY Architects`) to generate its SHA-256 hash as
+  64 lowercase hexadecimal characters. Surrounding whitespace is trimmed;
+  case and internal spaces are preserved. Empty values stay empty, and arrays
+  are hashed element by element without changing row IDs or element positions.
+  HASH accepts table, GeoNames, merge, split, or other HASH outputs. Its output
+  can feed properties, transformations, or a `sh:node` reference. Connecting it
+  to Building's Architect reference automatically makes the hash the Architect
+  identifier while Building keeps its original ID; map the original name to
+  Architect's name property. You can also select the HASH output's `hash` field
+  in a shape's **Subject identifier** dropdown. The node and connections are
+  saved with the project.
 - Generate RDF from the current mapping.
 - Review generated RDF subjects as cards, tables, or Turtle.
 - Validate generated RDF against the loaded SHACL profiles.

@@ -74,7 +74,7 @@ export const mergeModule = createMappingExtensionModule({
     connect: (connection, context) => {
       const sourceHandle = connection.sourceHandle ?? ''
       const targetHandle = connection.targetHandle ?? ''
-      if (connection.source && /^(src:|geonames:|merge:|split:)/.test(connection.source) && connection.target?.startsWith('merge:')) {
+      if (connection.source && /^(src:|geonames:|merge:|split:|hash:)/.test(connection.source) && connection.target?.startsWith('merge:')) {
         const node = context.mappingStore.findExtensionNode<MergeNodeConfig>(MERGE_NODE_STATE_KEY, connection.target)
         const inputNumber = Number(targetHandle.replace('merge-input-', ''))
         if (!node || !sourceHandle.startsWith('h:') || !/^merge-input-[1-9]\d*$/.test(targetHandle) || inputNumber > node.inputCount) return false

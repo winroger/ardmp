@@ -1,7 +1,7 @@
 /** Text operations accept scalar lists, never implicit object stringification. */
 export function scalarText(value: unknown): string {
   if (value == null) return ''
-  if (typeof value === 'object') throw new Error('Extract a text or ID field from objects before using merge or split.')
+  if (typeof value === 'object') throw new Error('Extract a text or ID field from objects before using merge, split or HASH.')
   return String(value).trim()
 }
 

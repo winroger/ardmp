@@ -2,6 +2,7 @@ import type { DataSource } from '@/domain/DataSource'
 import type { ExtensionUiEdge, MappingNodeOutputSourceContext, MappingExtensionStoreApi } from './types'
 import { materializeMergeOutputSource, syncMergeShapeMappings } from '../modules/nodes/merge/workflow'
 import { materializeSplitOutputSource, syncSplitShapeMappings } from '../modules/nodes/split/workflow'
+import { materializeHashOutputSource, syncHashShapeMappings } from '../modules/nodes/hash/workflow'
 import { mappingEnrichmentNodeId } from '@/domain/Mapping'
 import type { GeoNamesNodeConfig } from '../modules/nodes/geonames/types'
 
@@ -9,7 +10,7 @@ export type TextTransformContext = Pick<MappingNodeOutputSourceContext, 'dataSto
   mappingStore: Pick<MappingExtensionStoreApi, 'findExtensionNode' | 'getExtensionState' | 'setExtensionState' | 'state'>
 }
 
-const textEdgeKeys = ['node.merge.uiEdges', 'node.split.uiEdges']
+const textEdgeKeys = ['node.merge.uiEdges', 'node.split.uiEdges', 'node.hash.uiEdges']
 const edgeKeys = [...textEdgeKeys, 'node.geonames.uiEdges']
 const materializing = new Set<string>()
 const syncing = new Set<string>()
@@ -25,12 +26,13 @@ export function textInputSource(upstream: string, context: TextTransformContext)
   if (upstream.startsWith('src:')) sourceId = upstream.slice(4)
   else if (upstream.startsWith('merge:')) sourceId = materializeMergeOutputSource(upstream, context)
   else if (upstream.startsWith('split:')) sourceId = materializeSplitOutputSource(upstream, context)
+  else if (upstream.startsWith('hash:')) sourceId = materializeHashOutputSource(upstream, context)
   else if (upstream.startsWith('geonames:')) {
     sourceId = context.mappingStore.findExtensionNode<{ id: string; outputSourceId?: string }>('node.geonames.nodes', upstream)?.outputSourceId
   }
   const source = sourceId ? context.dataStore.findById(sourceId) ?? context.sources.find(item => item.id === sourceId) : undefined
   if (!source) throw new Error(upstream.startsWith('geonames:')
-    ? 'Run the GeoNames node first to make its outputs available for merge or split.'
+    ? 'Run the GeoNames node first to make its outputs available for transformations.'
     : 'The connected input is not available. Complete its inputs first.')
   return source
 }
@@ -80,15 +82,17 @@ export function syncDependentTextTransforms(upstream: string, context: TextTrans
     for (const id of dependents) {
       if (id.startsWith('merge:')) syncMergeShapeMappings(id, context)
       if (id.startsWith('split:')) syncSplitShapeMappings(id, context)
+      if (id.startsWith('hash:')) syncHashShapeMappings(id, context)
     }
   } finally { syncing.delete(upstream) }
 }
 
 export function refreshTextTransforms(context: TextTransformContext): void {
-  for (const provider of ['merge', 'split']) {
+  for (const provider of ['merge', 'split', 'hash']) {
     for (const node of context.mappingStore.getExtensionState(`node.${provider}.nodes`, [] as { id: string }[])) {
       if (provider === 'merge') syncMergeShapeMappings(node.id, context)
-      else syncSplitShapeMappings(node.id, context)
+      else if (provider === 'split') syncSplitShapeMappings(node.id, context)
+      else syncHashShapeMappings(node.id, context)
     }
   }
 }
