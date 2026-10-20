@@ -30,6 +30,7 @@ import Tag from 'primevue/tag'
 import type { BrowseModel, BrowseSubject } from '@/services/browse/browseService'
 import type { NodeShape } from '@/domain/NodeShape'
 import { thumbnailUrlForSubject } from '@/features/browse/browseViewHelpers'
+import { relationshipClassColors, relationshipSubjectColor } from '@/features/browse/relationshipGraphColors'
 import { useShaclFormViewer, type ShaclFormElement } from '@/features/shacl/useShaclFormViewer'
 
 const formsWithLeafletViewer = new WeakSet<HTMLElement>()
@@ -195,6 +196,15 @@ function graphNodeId(iri: string): string {
   return `subject:${iri}`
 }
 
+const classColors = computed(() => relationshipClassColors(props.model))
+const graphClassLegend = computed(() => {
+  const subjects = currentSubject.value ? [currentSubject.value, ...relationships.value.map(entry => entry.subject)] : []
+  return [...new Map(subjects.map(subject => {
+    const appearance = relationshipSubjectColor(subject, classColors.value)
+    return [appearance.iri, appearance]
+  })).values()].sort((a, b) => a.label.localeCompare(b.label))
+})
+
 const graphElements = computed<ElementDefinition[]>(() => {
   const subject = currentSubject.value
   if (!subject) return []
@@ -206,6 +216,8 @@ const graphElements = computed<ElementDefinition[]>(() => {
       id: graphNodeId(subject.iri),
       iri: subject.iri,
       label: subject.label,
+      color: relationshipSubjectColor(subject, classColors.value).color,
+      border: relationshipSubjectColor(subject, classColors.value).border,
       classes: classSummary(subject),
       selected: true,
     },
@@ -219,6 +231,8 @@ const graphElements = computed<ElementDefinition[]>(() => {
         id: graphNodeId(related.iri),
         iri: related.iri,
         label: related.label,
+        color: relationshipSubjectColor(related, classColors.value).color,
+        border: relationshipSubjectColor(related, classColors.value).border,
         classes: classSummary(related),
         selected: false,
       },
@@ -253,8 +267,8 @@ function renderRelationshipGraph(): void {
       {
         selector: 'node',
         style: {
-          'background-color': '#ffffff',
-          'border-color': '#cbd5e1',
+          'background-color': 'data(color)',
+          'border-color': 'data(border)',
           'border-width': 1,
           color: '#0f172a',
           content: 'data(label)',
@@ -273,23 +287,10 @@ function renderRelationshipGraph(): void {
       {
         selector: 'node.selected-subject',
         style: {
-          'background-color': '#ffffff',
-          'border-color': '#2563eb',
+          'border-color': '#0f172a',
           'border-width': 3,
           height: 68,
           width: 178,
-        },
-      },
-      {
-        selector: 'node.incoming-subject',
-        style: {
-          'border-color': '#94a3b8',
-        },
-      },
-      {
-        selector: 'node.outgoing-subject',
-        style: {
-          'border-color': '#60a5fa',
         },
       },
       {
@@ -516,10 +517,11 @@ function localName(iri: string): string {
       <section v-if="activeTab === 'relationships'" class="relationship-pane" role="tabpanel">
         <div v-if="hasRelationships" class="relationship-graph-shell">
           <div ref="graphRef" class="cy-graph" aria-label="Subject relationship graph" />
-          <div class="graph-legend" aria-hidden="true">
+          <div class="graph-legend" aria-label="Relationship class colors">
             <span><i class="legend-dot selected" />Selected</span>
-            <span><i class="legend-dot incoming" />Incoming</span>
-            <span><i class="legend-dot outgoing" />Outgoing</span>
+            <span v-for="item in graphClassLegend" :key="item.iri" :title="item.iri">
+              <i class="legend-dot" :style="{ backgroundColor: item.color, borderColor: item.border }" />{{ item.label }}
+            </span>
           </div>
         </div>
         <p v-else class="empty">No relationships to other generated subjects.</p>
@@ -674,9 +676,7 @@ function localName(iri: string): string {
   border: 1px solid var(--color-border);
   display: flex;
 
-  &.selected { background: #fff; border-color: var(--color-primary); border-width: 2px; }
-  &.incoming { background: #fff; border-color: #94a3b8; }
-  &.outgoing { background: #fff; border-color: #60a5fa; }
+  &.selected { background: #fff; border-color: #0f172a; border-width: 2px; }
 }
 
 @media (max-width: 900px) {

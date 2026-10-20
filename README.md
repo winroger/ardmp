@@ -85,6 +85,8 @@ or maintaining one-off conversion scripts.
   saved with the project.
 - Generate RDF from the current mapping.
 - Review generated RDF subjects as cards, tables, or Turtle.
+  Each subject's Relationships view colors nodes by class, with a class legend
+  and a separate outline for the selected subject.
 - Validate generated RDF against the loaded SHACL profiles.
 - Capture RO-Crate dataset metadata through a SHACL-form based publish view.
 - Publish a ZIP package containing:
