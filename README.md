@@ -85,6 +85,14 @@ or maintaining one-off conversion scripts.
   saved with the project.
 - Generate RDF from the current mapping.
 - Review generated RDF subjects as cards, tables, or Turtle.
+  Use the toolbar search or open the Filters dialog, select a class, and filter using its SHACL profile, including
+  nested relationships, dropdown values with counts, and numeric or date ranges.
+  Click Apply filters to update List, Cards, and Turtle. Search updates all three
+  immediately. Filtered Turtle includes matching records and their outgoing linked
+  entities. Role and organization criteria in one stakeholder branch must match
+  the same stakeholder. Where several profiles describe a class, choose the
+  profile in the dialog. Linked profiles can be searched from the selected class,
+  for example finding buildings by the name of their linked architect.
   Each subject's Relationships view colors nodes by class, with a class legend
   and a separate outline for the selected subject.
 - Validate generated RDF against the loaded SHACL profiles.

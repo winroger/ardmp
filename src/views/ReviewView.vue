@@ -13,8 +13,9 @@
  * predicate within the currently visible subject set becomes a column
  * whose header shows the human label on top and the property path underneath.
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import type { Store } from 'rdflib'
 import { isCanvasVisibleDataSource } from '@/domain/DataSource'
 import type { NodeShape } from '@/domain/NodeShape'
 import { useShapesStore } from '@/stores/shapesStore'
@@ -38,6 +39,9 @@ import SelectButton from 'primevue/selectbutton'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import SubjectDetailDialog from '@/features/browse/components/SubjectDetailDialog.vue'
+import ReviewFilters from '@/features/browse/components/ReviewFilters.vue'
+import { ReviewQueryIndex, type ReviewQuery } from '@/services/browse/reviewQuery'
+import { buildReviewSubgraph } from '@/services/browse/reviewSubgraph'
 
 const shapesStore = useShapesStore()
 const dataStore = useDataStore()
@@ -80,7 +84,12 @@ const canBrowse = computed(() =>
 
 // ---------- RDF + validation, auto-built from current state ----------
 const model = ref<BrowseModel | null>(null)
+const queryIndex = shallowRef<ReviewQueryIndex | null>(null)
+const generatedStore = shallowRef<Store | null>(null)
 const ttlOutput = ref('')
+const filteredTurtle = ref('')
+const turtleError = ref('')
+const isSerializingTurtle = ref(false)
 const generationError = ref<string | null>(null)
 const isGenerating = ref(false)
 
@@ -88,6 +97,8 @@ async function regenerate(): Promise<void> {
   if (!canBrowse.value) {
     runtimeStagingShapes.value = createEmptyRuntimeStagingShapes()
     model.value = null
+    queryIndex.value = null
+    generatedStore.value = null
     ttlOutput.value = ''
     generationError.value = null
     return
@@ -103,16 +114,22 @@ async function regenerate(): Promise<void> {
     runtimeStagingShapes.value = nextRuntimeStagingShapes
 
     const result = generateRdf(ap.value, mappingStore.state, sources.value)
+    generatedStore.value = result.store
     model.value = buildBrowseModel(
       result.store,
       [...nodeShapes.value, ...nextRuntimeStagingShapes.nodeShapes],
       sources.value,
     )
+    queryIndex.value = new ReviewQueryIndex(result.store, new Map(
+      model.value.groups.flatMap(group => group.subjects.map(subject => [subject.iri, subject.label] as const)),
+    ))
     ttlOutput.value = await serializeGraph(result.store, 'text/turtle')
   } catch (err) {
     generationError.value = err instanceof Error ? err.message : String(err)
     runtimeStagingShapes.value = createEmptyRuntimeStagingShapes()
     model.value = null
+    queryIndex.value = null
+    generatedStore.value = null
     ttlOutput.value = ''
   } finally {
     isGenerating.value = false
@@ -142,10 +159,58 @@ const layoutOptions = [
 ]
 const search = ref('')
 const selectedClass = ref('')
+const draftClass = ref('')
+const selectedShapeIri = ref('')
+const filtersOpen = ref(false)
+const filterDialog = ref<HTMLDialogElement | null>(null)
+const filterForm = ref<InstanceType<typeof ReviewFilters> | null>(null)
+const filterRevision = ref(0)
+const shapeQuery = shallowRef<ReviewQuery | null>(null)
+const draftShapeQuery = shallowRef<ReviewQuery | null>(null)
+const filterShapes = computed(() => browseNodeShapes.value.filter(shape =>
+  shape.nodeId.termType === 'NamedNode' && (shape.targetClass?.value ?? shape.nodeId.value) === draftClass.value,
+))
+watch(filterShapes, shapes => {
+  if (!shapes.some(shape => shape.nodeId.value === selectedShapeIri.value)) selectedShapeIri.value = shapes[0]?.nodeId.value ?? ''
+}, { flush: 'sync' })
+watch([draftClass, queryIndex], () => {
+  draftShapeQuery.value = null
+  filterRevision.value++
+}, { flush: 'sync' })
+watch(selectedShapeIri, () => {
+  draftShapeQuery.value = null
+  filterRevision.value++
+}, { flush: 'sync' })
+
+function openFilters(): void {
+  filtersOpen.value = true
+  filterDialog.value?.showModal()
+}
+
+function closeFilters(): void {
+  filtersOpen.value = false
+  filterDialog.value?.close()
+}
+
+function onShapeQuery(value: ReviewQuery): void {
+  if (value.query.rootShapeId === selectedShapeIri.value) draftShapeQuery.value = value
+}
+
+function applyFilters(): void {
+  if (!draftClass.value) return
+  const latestQuery = filterForm.value?.getQuery?.() ?? draftShapeQuery.value
+  selectedClass.value = draftClass.value
+  shapeQuery.value = latestQuery?.query.rootShapeId === selectedShapeIri.value ? latestQuery : null
+  closeFilters()
+}
+
+function clearShapeFilters(): void {
+  draftShapeQuery.value = null
+  filterRevision.value++
+}
 
 watch(model, () => {
-  search.value = ''
-  selectedClass.value = ''
+  clearFilters()
 })
 
 const classOptions = computed(() =>
@@ -181,18 +246,61 @@ const classFilteredSubjects = computed<BrowseSubject[]>(() => {
   return allSubjects.value.filter(subject => subject.classes.includes(selectedClass.value))
 })
 
-const visibleSubjects = computed(() => {
+const textFilteredSubjects = computed(() => {
   const term = search.value.trim().toLowerCase()
   return classFilteredSubjects.value.filter(subject => !term || subjectMatchesSearch(subject, term))
 })
+const filterRoots = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return allSubjects.value.filter(subject => subject.classes.includes(draftClass.value)
+    && (!term || subjectMatchesSearch(subject, term))).map(subject => subject.iri)
+})
+const shapeMatches = computed(() => shapeQuery.value?.query.criteria.length && queryIndex.value
+  ? queryIndex.value.matchingRoots(shapeQuery.value, textFilteredSubjects.value.map(subject => subject.iri)) : null)
+const visibleSubjects = computed(() => textFilteredSubjects.value.filter(subject => !shapeMatches.value || shapeMatches.value.has(subject.iri)))
 
-const hasActiveFilters = computed(() => Boolean(search.value || selectedClass.value))
+const activeShapeFilters = computed(() => shapeQuery.value?.query.criteria.length ?? 0)
+const draftShapeFilters = computed(() => draftShapeQuery.value?.query.criteria.length ?? 0)
+const activeFilterCount = computed(() => Number(Boolean(selectedClass.value)) + activeShapeFilters.value)
+const hasActiveFilters = computed(() => Boolean(search.value.trim() || selectedClass.value || activeShapeFilters.value))
+
+const visibleRootIds = computed(() => visibleSubjects.value.map(subject => subject.iri))
+watch([layout, visibleRootIds, generatedStore, ttlOutput], async ([view, roots, store, completeTurtle], _previous, onCleanup) => {
+  let current = true
+  onCleanup(() => { current = false })
+  if (view !== 'ttl') return
+  filteredTurtle.value = ''
+  turtleError.value = ''
+  isSerializingTurtle.value = false
+  if (!store || !roots.length) return
+  if (!hasActiveFilters.value) {
+    filteredTurtle.value = completeTurtle
+    return
+  }
+  isSerializingTurtle.value = true
+  try {
+    const selected = new Set(roots)
+    const excluded = selectedClass.value
+      ? new Set(classFilteredSubjects.value.filter(subject => !selected.has(subject.iri)).map(subject => subject.iri))
+      : new Set<string>()
+    const turtle = await serializeGraph(buildReviewSubgraph(store, roots, excluded), 'text/turtle')
+    if (current) filteredTurtle.value = turtle
+  } catch (cause) {
+    if (current) turtleError.value = cause instanceof Error ? cause.message : String(cause)
+  } finally {
+    if (current) isSerializingTurtle.value = false
+  }
+})
 
 const isCopying = ref(false)
 
 function clearFilters(): void {
   search.value = ''
   selectedClass.value = ''
+  shapeQuery.value = null
+  draftClass.value = ''
+  clearShapeFilters()
+  closeFilters()
 }
 
 // ---------- Detail dialog ----------
@@ -222,10 +330,10 @@ function subjectId(subject: BrowseSubject): string {
 }
 
 async function copyTurtle(): Promise<void> {
-  if (!ttlOutput.value) return
+  if (!filteredTurtle.value || isSerializingTurtle.value || turtleError.value) return
   isCopying.value = true
   try {
-    await navigator.clipboard.writeText(ttlOutput.value)
+    await navigator.clipboard.writeText(filteredTurtle.value)
     toast.add({ severity: 'success', summary: 'Copied', detail: 'Turtle copied to the clipboard.', life: 2500 })
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Copy failed', detail: err instanceof Error ? err.message : String(err), life: 4000 })
@@ -259,25 +367,10 @@ async function copyTurtle(): Promise<void> {
         <label class="search-filter form-stack">
           <span>Search</span>
           <span class="p-input-icon-left search-wrapper">
-            <i class="pi pi-search" />
-            <InputText
-              v-model="search"
-              placeholder="Search across subjects and properties..."
-              class="search-input"
-            />
+            <i class="pi pi-search" aria-hidden="true" />
+            <InputText v-model="search" placeholder="Search subjects and properties..." class="search-input" />
           </span>
         </label>
-
-        <label class="class-filter form-stack">
-          <span>Class</span>
-          <select v-model="selectedClass" class="form-select">
-            <option value="">All classes</option>
-            <option v-for="option in classOptions" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
-
         <label class="view-filter form-stack">
           <span>View</span>
           <SelectButton
@@ -294,24 +387,84 @@ async function copyTurtle(): Promise<void> {
           </SelectButton>
         </label>
 
-        <Button
-          v-if="hasActiveFilters"
-          icon="pi pi-filter-slash"
-          label="Reset filters"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="clearFilters"
-        />
+        <button
+          type="button"
+          class="shape-filter-toggle"
+          :aria-expanded="filtersOpen"
+          aria-haspopup="dialog"
+          aria-controls="review-filter-dialog"
+          @click="openFilters"
+        >
+          <i class="pi pi-filter" aria-hidden="true" />
+          Filters<span v-if="activeFilterCount"> ({{ activeFilterCount }})</span>
+        </button>
 
       </div>
 
+      <dialog
+        id="review-filter-dialog"
+        ref="filterDialog"
+        class="filter-dialog"
+        aria-labelledby="review-filter-title"
+        aria-describedby="review-filter-description"
+        @close="filtersOpen = false"
+      >
+        <header class="filter-dialog-header">
+          <h2 id="review-filter-title">Filters</h2>
+          <button type="button" class="filter-dialog-close" aria-label="Close filters" @click="closeFilters"><i class="pi pi-times" aria-hidden="true" /></button>
+        </header>
+        <div class="filter-dialog-body">
+          <p id="review-filter-description">Choose a class, then filter its properties and linked records.</p>
+          <label class="class-filter form-stack">
+            <span>Class <span aria-hidden="true">*</span></span>
+            <select v-model="draftClass" class="form-select" aria-label="Class to filter" required>
+              <option value="" disabled>Select a class</option>
+              <option v-for="option in classOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+          </label>
+          <label v-if="filterShapes.length > 1" class="form-stack profile-filter">
+            <span>Filter profile</span>
+            <select v-model="selectedShapeIri" class="form-select" aria-label="Filter profile">
+              <option v-for="shape in filterShapes" :key="shape.nodeId.value" :value="shape.nodeId.value" :title="shape.nodeId.value">
+                {{ shape.rdfsLabel ?? shape.label ?? localName(shape.nodeId.value) }}
+              </option>
+            </select>
+          </label>
+          <button v-if="draftShapeFilters" type="button" class="link-button clear-shape-filters" @click="clearShapeFilters">Clear shape filters</button>
+          <ReviewFilters
+            v-if="selectedShapeIri && queryIndex"
+            :key="`${selectedShapeIri}:${filterRevision}`"
+            ref="filterForm"
+            :shapes-turtle="browseShapesTurtle"
+            :shape-iri="selectedShapeIri"
+            :index="queryIndex"
+            :roots="filterRoots"
+            @query="onShapeQuery"
+          />
+          <p v-else-if="draftClass">No filter profile is available for this class. You can filter by class and text.</p>
+        </div>
+        <footer class="filter-dialog-footer">
+          <Button label="Clear filters" severity="secondary" outlined :disabled="!hasActiveFilters && !draftClass" @click="clearFilters" />
+          <div class="filter-dialog-actions">
+            <Button label="Close" severity="secondary" outlined @click="closeFilters" />
+            <Button class="apply-filters" label="Apply filters" :disabled="!draftClass" @click="applyFilters" />
+          </div>
+        </footer>
+      </dialog>
+
+      <p class="review-summary" role="status">
+        <span v-if="selectedClass">{{ classLabelsByIri.get(selectedClass) }} · </span>{{ visibleSubjects.length }} of {{ classFilteredSubjects.length }} subjects
+        <span v-if="layout === 'ttl' && hasActiveFilters"> · Turtle includes matching subjects and their linked entities.</span>
+      </p>
+
       <!-- Empty state -->
-      <Message v-if="layout !== 'ttl' && visibleSubjects.length === 0" severity="info" :closable="false">
+      <Message v-if="visibleSubjects.length === 0" severity="info" :closable="false">
         No subjects match the current filters.
       </Message>
 
       <section v-if="layout === 'ttl'" class="ttl-view">
+        <Message v-if="turtleError" severity="error" :closable="false">{{ turtleError }}</Message>
+        <p v-if="isSerializingTurtle" role="status">Preparing Turtle…</p>
         <div class="ttl-actions">
           <Button
             icon="pi pi-copy"
@@ -320,10 +473,11 @@ async function copyTurtle(): Promise<void> {
             severity="secondary"
             outlined
             :loading="isCopying"
+            :disabled="isSerializingTurtle || Boolean(turtleError) || !filteredTurtle"
             @click="copyTurtle"
           />
         </div>
-        <pre class="ttl-output">{{ ttlOutput }}</pre>
+        <pre class="ttl-output" :aria-busy="isSerializingTurtle">{{ filteredTurtle }}</pre>
       </section>
 
       <section v-else-if="layout === 'card'" class="card-grid" aria-label="Subject cards">
@@ -514,6 +668,57 @@ async function copyTurtle(): Promise<void> {
 }
 
 .layout-label { margin-left: var(--space-1); }
+.shape-filter-toggle {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.filter-dialog {
+  width: min(850px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 3rem);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  &::backdrop { background: rgb(15 23 42 / 45%); }
+  &[open] { display: flex; flex-direction: column; }
+}
+.filter-dialog-header, .filter-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  flex-shrink: 0;
+}
+.filter-dialog-header {
+  border-bottom: 1px solid var(--color-border);
+  h2 { margin: 0; font-size: 1.2rem; }
+}
+.filter-dialog-close { border: 0; padding: 0.5rem; background: none; color: inherit; cursor: pointer; }
+.filter-dialog-body {
+  overflow: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  p { margin: 0; color: var(--color-text-muted); }
+  .search-filter { flex: initial; min-width: 0; }
+}
+.filter-dialog-footer { border-top: 1px solid var(--color-border); flex-wrap: wrap; }
+.filter-dialog-actions { display: flex; gap: var(--space-2); margin-left: auto; }
+.clear-shape-filters { align-self: flex-start; }
+.review-summary { margin: 0; color: var(--color-text-muted); font-size: 0.85rem; }
 
 .ttl-view {
   position: relative;
