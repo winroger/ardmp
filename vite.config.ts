@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { fileURLToPath, URL } from 'node:url'
+import { readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 
 function normalizeBasePath(path: string): string {
   const trimmed = path.trim()
@@ -115,6 +117,25 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     // Pre-bundle these to ensure CJS deps see the aliased `process`.
     include: ['process/browser'],
+    esbuildOptions: {
+      plugins: [{
+        name: 'inline-leaflet-raw-css',
+        setup(build) {
+          // shacl-form uses these styles inside its shadow DOM. Inline them
+          // during dependency optimization so lazy routes do not depend on
+          // separate CSS-as-JavaScript requests from the optimized module.
+          const require = createRequire(import.meta.url)
+          build.onResolve({ filter: /^leaflet(?:\.fullscreen)?\/.*\.css\?raw$/ }, args => ({
+            path: require.resolve(args.path.replace(/\?raw$/, '')),
+            namespace: 'leaflet-raw-css',
+          }))
+          build.onLoad({ filter: /./, namespace: 'leaflet-raw-css' }, async args => ({
+            contents: await readFile(args.path, 'utf8'),
+            loader: 'text',
+          }))
+        },
+      }],
+    },
   },
   build: {
     rollupOptions: {
