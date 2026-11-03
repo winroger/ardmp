@@ -1,17 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import cytoscape, { type CytoscapeOptions, type ElementDefinition } from 'cytoscape'
 import SubjectDetailDialog from '@/features/browse/components/SubjectDetailDialog.vue'
 import type { BrowseModel } from '@/services/browse/browseService'
-
-vi.mock('cytoscape', () => ({
-  default: vi.fn(() => ({
-    on: vi.fn(),
-    layout: vi.fn(() => ({ run: vi.fn() })),
-    fit: vi.fn(),
-    destroy: vi.fn(),
-  })),
-}))
 
 vi.mock('@ulb-darmstadt/shacl-form', () => ({}))
 
@@ -24,7 +14,7 @@ vi.mock('@/features/shacl/useShaclFormViewer', () => ({
 }))
 
 describe('SubjectDetailDialog', () => {
-  it('renders a subject thumbnail above the SHACL form when an image URL is present', () => {
+  it('renders subject thumbnails by default and hides them when external images are disabled', async () => {
     const wrapper = mount(SubjectDetailDialog, {
       props: {
         modelValue: true,
@@ -69,10 +59,11 @@ describe('SubjectDetailDialog', () => {
     const thumbnail = wrapper.find('img.subject-preview-image')
     expect(thumbnail.exists()).toBe(true)
     expect(thumbnail.attributes('src')).toBe('https://v5.airtableusercontent.com/example/building-one.jpg')
+    await wrapper.setProps({ allowExternalImages: false })
+    expect(wrapper.find('img.subject-preview-image').exists()).toBe(false)
   })
 
-  it('colors related subjects by class and displays their class names in the legend', async () => {
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+  it('renders facts without relationship preview tabs and follows linked entities', async () => {
     const model: BrowseModel = { totalSubjects: 2, groups: [
       { classIri: 'urn:Building', classLabel: 'Building', count: 1, subjects: [{ iri: 'urn:b', label: 'Building One', classes: ['urn:Building'],
         properties: [{ label: 'Architect', predicate: 'urn:architect', value: 'urn:o', isResource: true }] }] },
@@ -80,22 +71,15 @@ describe('SubjectDetailDialog', () => {
     ] }
     const wrapper = mount(SubjectDetailDialog, {
       props: { modelValue: true, subjectIri: 'urn:b', model, shapes: [], shapesTurtle: '', valuesTurtle: '' },
-      global: { stubs: { Dialog: { template: '<div><slot /></div>' }, Button: true, Tag: true, 'shacl-form': true } },
+      global: { stubs: { Dialog: { template: '<div><slot /></div>' }, 'shacl-form': true } },
     })
-    try {
-      await wrapper.findAll('.detail-tab')[1].trigger('click')
-      await flushPromises()
-      const options = vi.mocked(cytoscape).mock.calls.at(-1)![0] as unknown as CytoscapeOptions
-      const nodes = (options.elements as ElementDefinition[]).filter(element => element.data.iri)
-      expect(nodes.map(node => node.data.color)).toEqual(['#dbeafe', '#dcfce7'])
-      expect(wrapper.find('[aria-label="Relationship class colors"]').text()).toContain('Building')
-      expect(wrapper.find('[aria-label="Relationship class colors"]').text()).toContain('Organization')
-      expect(options.style).toEqual(expect.arrayContaining([
-        expect.objectContaining({ selector: 'node', style: expect.objectContaining({ 'background-color': 'data(color)' }) }),
-      ]))
-    } finally {
-      wrapper.unmount()
-      vi.unstubAllGlobals()
-    }
+    expect(wrapper.find('.detail-tab').exists()).toBe(false)
+    expect(wrapper.find('.cy-graph').exists()).toBe(false)
+    await wrapper.find('.detail-properties button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('h2').text()).toBe('XY Architects')
+    await wrapper.find('[aria-label="Close entity details"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    wrapper.unmount()
   })
 })

@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.review-filters { padding: var(--space-3); }
+.review-filters { min-width: 0; }
 .filters-empty { color: var(--color-text-muted); }
 :deep(shacl-form) {
   display: block;

@@ -5,6 +5,7 @@ import { graph, parse, type Store } from 'rdflib'
 import { parseShaclProfile } from '@/domain/NodeShape'
 import { TabularDataSource } from '@/domain/DataSource'
 import ReviewView from '@/views/ReviewView.vue'
+import SubjectDetailPanel from '@/features/browse/components/SubjectDetailPanel.vue'
 import { useDataStore } from '@/stores/dataStore'
 import { useShapesStore } from '@/stores/shapesStore'
 
@@ -18,17 +19,26 @@ vi.mock('primevue/usetoast', () => ({
   useToast: () => ({ add: toastAddMock }),
 }))
 
-vi.mock('@/features/browse/components/SubjectDetailDialog.vue', () => ({
+vi.mock('@/features/browse/components/SubjectDetailPanel.vue', () => ({
   default: {
-    template: '<div />',
+    props: ['subjectIri'],
+    emits: ['close', 'openSubject'],
+    template: '<aside class="detail-panel-stub" />',
   },
 }))
 vi.mock('@/features/browse/components/ReviewFilters.vue', () => ({
   default: { name: 'ReviewFilters', props: ['shapeIri', 'roots'], emits: ['query'], template: '<div class="query-form-stub" />' },
 }))
 
+vi.mock('@/features/browse/components/ReviewGraph.vue', () => ({
+  default: { name: 'ReviewGraph', props: ['model', 'subjects'], emits: ['openSubject'], template: '<div class="graph-view-stub" />' },
+}))
+
 vi.mock('@/services/rdf/rdfGenerator', () => ({
   generateRdf: (...args: unknown[]) => generateRdfMock(...args),
+  serializeGraph: (...args: unknown[]) => serializeGraphMock(...args),
+}))
+vi.mock('@/services/rdf/serializeGraph', () => ({
   serializeGraph: (...args: unknown[]) => serializeGraphMock(...args),
 }))
 
@@ -169,7 +179,7 @@ describe('ReviewView', () => {
     const thumbnail = wrapper.find('img.record-thumbnail')
     expect(thumbnail.exists()).toBe(true)
     expect(thumbnail.attributes('src')).toBe('https://v5.airtableusercontent.com/example/building-one.jpg')
-    expect(wrapper.find('thead .record-thumbnail-slot').exists()).toBe(true)
+    expect(wrapper.find('thead .record-thumbnail-slot').exists()).toBe(false)
     expect(wrapper.findAll('tbody .record-thumbnail-slot')).toHaveLength(1)
     expect(wrapper.text()).toContain('Building One')
     expect(wrapper.text()).toContain('Building Two')
@@ -240,76 +250,96 @@ describe('ReviewView', () => {
     ] }, fields: [field] }
   }
 
-  it('keeps search outside the dialog and applies shape filters to List, Cards and Turtle', async () => {
+  it('shares persistent sidebar SHACL filters across List, Cards, Graph and Turtle', async () => {
     const value = prepareFilterFixture()
     const wrapper = mountView()
     await flushPromises()
-    expect(wrapper.find('.toolbar .class-filter').exists()).toBe(false)
-    expect(wrapper.find('.toolbar .search-input').exists()).toBe(true)
-    expect(wrapper.find('dialog .search-input').exists()).toBe(false)
+    expect(wrapper.find('.review-sidebar .search-input').exists()).toBe(true)
+    expect(wrapper.find('dialog').exists()).toBe(false)
+    expect(wrapper.find('.review-results .layout-switcher').exists()).toBe(true)
     expect(wrapper.find('.query-form-stub').exists()).toBe(false)
-    await wrapper.find('.shape-filter-toggle').trigger('click')
-    expect(wrapper.find<HTMLDialogElement>('dialog').element.open).toBe(true)
-    expect(wrapper.find<HTMLButtonElement>('.apply-filters').element.disabled).toBe(true)
     await wrapper.find('.class-filter select').setValue('http://example.org/Building')
     const form = wrapper.findComponent({ name: 'ReviewFilters' })
+    expect(wrapper.find('.review-sidebar .query-form-stub').exists()).toBe(true)
     form.vm.$emit('query', value)
     await flushPromises()
-    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
-    await wrapper.find('.apply-filters').trigger('click')
-    expect(wrapper.find<HTMLDialogElement>('dialog').element.open).toBe(false)
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
     expect(wrapper.find('tbody').text()).toContain('Alpha')
-    expect(wrapper.find('[role="status"]').text()).toContain('1 of 2 subjects')
-    await wrapper.find('.shape-filter-toggle').trigger('click')
-    expect(wrapper.findComponent({ name: 'ReviewFilters' }).element).toBe(form.element)
-    await wrapper.find('[aria-label="Filter profile"]').setValue('http://example.org/OtherShape')
-    await wrapper.find('.filter-dialog-close').trigger('click')
-    expect(wrapper.find('tbody').text()).toContain('Alpha')
-    await wrapper.find('.shape-filter-toggle').trigger('click')
-    expect(wrapper.find<HTMLSelectElement>('[aria-label="Filter profile"]').element.value).toBe('http://example.org/OtherShape')
-    await wrapper.find('.filter-dialog-close').trigger('click')
+    expect(wrapper.find('.review-summary').text()).toContain('1 of 2 subjects')
     await wrapper.find('[data-layout="card"]').trigger('click')
     expect(wrapper.findAll('.subject-card')).toHaveLength(1)
+    await wrapper.find('[data-layout="graph"]').trigger('click')
+    const graph = wrapper.findComponent({ name: 'ReviewGraph' })
+    expect(graph.props('subjects').map((subject: { label: string }) => subject.label)).toEqual(['Alpha'])
+    expect(wrapper.find('.list-table').exists()).toBe(false)
+    graph.vm.$emit('openSubject', 'http://example.org/a')
+    await flushPromises()
+    expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/a')
     await wrapper.find('[data-layout="ttl"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('.ttl-output').text()).toContain('Alpha')
     expect(wrapper.find('.ttl-output').text()).not.toContain('Beta')
-    expect(wrapper.find('[role="status"]').text()).toContain('1 of 2 subjects')
-    expect(wrapper.find('.shape-filter-toggle').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'ReviewFilters' }).element).toBe(form.element)
     expect(generateRdfMock).toHaveBeenCalledTimes(1)
     wrapper.unmount()
   })
 
-  it('combines immediate search with draft facets and clears the filters from the dialog', async () => {
+  it('updates sidebar facets immediately and discards stale queries when changing profiles', async () => {
     const value = prepareFilterFixture()
     const wrapper = mountView()
     await flushPromises()
-    await wrapper.find('.shape-filter-toggle').trigger('click')
     await wrapper.find('.class-filter select').setValue('http://example.org/Building')
     wrapper.findComponent({ name: 'ReviewFilters' }).vm.$emit('query', value)
-    await wrapper.find('.apply-filters').trigger('click')
-    expect(wrapper.find('tbody').text()).toContain('Alpha')
-    await wrapper.find('.shape-filter-toggle').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
     await wrapper.find('.search-input').setValue('Beta')
     expect(wrapper.findAll('tbody tr')).toHaveLength(0)
     expect(wrapper.findComponent({ name: 'ReviewFilters' }).props('roots')).toEqual(['http://example.org/b'])
     await wrapper.find('[aria-label="Filter profile"]').setValue('http://example.org/OtherShape')
-    expect(wrapper.findAll('tbody tr')).toHaveLength(0)
-    expect(wrapper.findComponent({ name: 'ReviewFilters' }).props('shapeIri')).toBe('http://example.org/OtherShape')
-    // A late event from the previous profile cannot restore its criteria.
-    wrapper.findComponent({ name: 'ReviewFilters' }).vm.$emit('query', value)
-    await wrapper.find('.apply-filters').trigger('click')
     expect(wrapper.findAll('tbody tr')).toHaveLength(1)
     expect(wrapper.find('tbody').text()).toContain('Beta')
-    await wrapper.find('.shape-filter-toggle').trigger('click')
-    await wrapper.findAll('.filter-dialog-footer button').find(button => button.text() === 'Clear filters')!.trigger('click')
+    wrapper.findComponent({ name: 'ReviewFilters' }).vm.$emit('query', value)
+    await flushPromises()
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    await wrapper.find('.clear-filters').trigger('click')
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
     expect(wrapper.find<HTMLSelectElement>('.class-filter select').element.value).toBe('')
     expect(wrapper.find('.query-form-stub').exists()).toBe(false)
-    expect(wrapper.find<HTMLButtonElement>('.apply-filters').element.disabled).toBe(true)
-    expect(wrapper.find('.shape-filter-toggle').text()).toBe('Filters')
     expect(generateRdfMock).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('opens entity details beside the results, switches selection and closes without changing filters', async () => {
+    prepareFilterFixture()
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.find('.class-filter select').setValue('http://example.org/Building')
+    await wrapper.findAll('tbody tr')[0].trigger('click')
+    expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/a')
+    expect(wrapper.find('.review-workspace').classes()).toContain('has-details')
+    const filterDivider = wrapper.find('[aria-label="Resize filters"]')
+    const originalWidth = Number(filterDivider.attributes('aria-valuenow'))
+    await filterDivider.trigger('keydown', { key: 'ArrowLeft' })
+    expect(Number(filterDivider.attributes('aria-valuenow'))).toBe(originalWidth - 10)
+    expect(wrapper.find('.review-workspace').attributes('style')).toContain(`--review-filter-width: ${originalWidth - 10}px`)
+    expect(wrapper.find('[aria-label="Resize entity details"]').exists()).toBe(true)
+    expect(wrapper.find('dialog').exists()).toBe(false)
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+    expect(wrapper.findAll('tbody tr')[0].classes()).toContain('is-selected')
+    await wrapper.findAll('tbody tr')[1].trigger('keydown', { key: 'Enter' })
+    expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/b')
+    await wrapper.find('[data-layout="card"]').trigger('click')
+    await wrapper.findAll('.subject-card')[0].trigger('click')
+    expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/a')
+    wrapper.findComponent(SubjectDetailPanel).vm.$emit('openSubject', 'http://example.org/b')
+    await flushPromises()
+    expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/b')
+    wrapper.findComponent(SubjectDetailPanel).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.findComponent(SubjectDetailPanel).exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Resize entity details"]').exists()).toBe(false)
+    expect(wrapper.find('.review-workspace').classes()).not.toContain('has-details')
+    expect(wrapper.find<HTMLSelectElement>('.class-filter select').element.value).toBe('http://example.org/Building')
     wrapper.unmount()
   })
 
