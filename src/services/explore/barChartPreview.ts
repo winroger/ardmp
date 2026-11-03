@@ -46,7 +46,7 @@ export function buildBarChartPreview(
 
   return {
     animationDuration: 300,
-    tooltip: { trigger: 'axis' },
+    tooltip: { trigger: 'axis', renderMode: 'richText' },
     grid: { top: 56, right: 24, bottom: 48, left: 56 },
     xAxis: {
       type: 'category',

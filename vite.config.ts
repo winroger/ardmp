@@ -5,6 +5,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import { fileURLToPath, URL } from 'node:url'
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { roCrateViewerPlugin } from './scripts/roCrateViewerPlugin'
 
 function normalizeBasePath(path: string): string {
   const trimmed = path.trim()
@@ -85,6 +86,7 @@ function manualVendorChunks(id: string): string | undefined {
 export default defineConfig(({ mode }) => ({
   base: resolvePagesBase(mode),
   plugins: [
+    roCrateViewerPlugin(),
     vue({
       template: {
         compilerOptions: {

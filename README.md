@@ -99,11 +99,22 @@ or maintaining one-off conversion scripts.
 - Capture RO-Crate dataset metadata through a SHACL-form based publish view.
 - Publish a ZIP package containing:
   - `ro-crate-metadata.json`
+  - self-contained `ro-crate-preview.html` with interactive Review and saved Analyze views
   - generated RDF as `data/dataset.ttl`
   - source tables as CSV
   - materialized enrichment or transform outputs as CSV when they are part of the exportable pipeline state
   - resolved SHACL profiles
   - RML mapping output
+
+Extract the ZIP and open `ro-crate-preview.html` directly in a modern browser.
+List, Cards, Turtle, search, class/property filters, linked-profile filters,
+factsheets, and colored relationships work without a server. Saved bar, scatter,
+and geographic charts and their dataframes are included, with machine-readable
+snapshots under `analysis/`. Geographic points work offline; loading map tiles
+or external images is optional and requires internet. The viewer shows the
+published snapshot; pipeline editing, enrichment, validation, and creating new
+charts remain in ARDMP. Without JavaScript, the metadata and archive file links
+remain readable.
 
 Array cells are shown as JSON arrays in previews and archived source CSVs.
 Mapped arrays generate repeated RDF property values rather than ordered RDF

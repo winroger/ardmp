@@ -1,4 +1,4 @@
-import { graph, serialize, type NamedNode, type Store } from 'rdflib'
+import { graph, type NamedNode, type Store } from 'rdflib'
 import { RDF_TYPE } from '@/domain/rdfConstants'
 import type { ApplicationProfile } from '@/domain/NodeShape'
 import { classifyShape } from '@/domain/NodeShape'
@@ -9,7 +9,6 @@ import { createEntityRowResolver, createReferenceResolver, sameRowReferences, sa
 import {
   resolveExplicitHybridOwnerForSource,
   isStagingSource,
-  normalizeStagingTurtlePrefixes,
   registerStagingPrefixes,
   stagingColumnsForSourceWithRelations,
   stagingClassForSource,
@@ -151,16 +150,4 @@ export function generateRdf(
   }
 }
 
-export function serializeGraph(
-  store: Store,
-  format: 'text/turtle' | 'application/ld+json' | 'application/n-triples' = 'text/turtle',
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    serialize(null, store, undefined, format, (err, str) => {
-      if (err) reject(err)
-      else resolve(format === 'text/turtle' ? normalizeStagingTurtlePrefixes(str ?? '') : (str ?? ''))
-    })
-  })
-}
-
-
+export { serializeGraph } from './serializeGraph'

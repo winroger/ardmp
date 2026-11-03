@@ -8,8 +8,10 @@ import type { ExploreGeoPreviewModel } from '@/services/explore/geoChartPreview'
 const props = withDefaults(defineProps<{
   preview: ExploreGeoPreviewModel
   height?: number | string
+  allowOnlineTiles?: boolean
 }>(), {
   height: 320,
+  allowOnlineTiles: true,
 })
 
 const emit = defineEmits<{
@@ -32,7 +34,7 @@ function ensureMap(): void {
     worldCopyJump: true,
   })
 
-  tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  if (props.allowOnlineTiles) tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(leafletMap)
@@ -93,7 +95,9 @@ function renderPoints(): void {
       weight: 1.5,
     })
 
-    marker.bindTooltip(point.label)
+    const tooltip = document.createElement('span')
+    tooltip.textContent = point.label
+    marker.bindTooltip(tooltip)
     marker.bindPopup(buildPopupContent(point), {
       className: 'explore-geo-popup-shell',
       autoClose: false,

@@ -77,11 +77,12 @@ export function buildScatterChartPreview(
     animationDuration: 300,
     tooltip: {
       trigger: 'item',
+      renderMode: 'richText',
       formatter: params => {
         const point = params as { data?: { name?: string; value?: [number, number] } }
         const name = point.data?.name ?? ''
         const value = point.data?.value ?? [0, 0]
-        return `${name}<br>${fieldLabel(dataframeModel.definition.columns, xKey, 'X')}: ${value[0]}<br>${fieldLabel(dataframeModel.definition.columns, yKey, 'Y')}: ${value[1]}`
+        return `${name}\n${fieldLabel(dataframeModel.definition.columns, xKey, 'X')}: ${value[0]}\n${fieldLabel(dataframeModel.definition.columns, yKey, 'Y')}: ${value[1]}`
       },
     },
     legend: colorKey ? {

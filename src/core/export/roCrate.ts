@@ -26,6 +26,8 @@ export interface RoCrateInput {
   }>
   /** Optional license URL. */
   license?: string
+  /** Human-readable website, excluded from dataset payload hasPart. */
+  website?: { path: string; name: string }
 }
 
 export interface RoCrateFile {
@@ -87,6 +89,12 @@ export function buildRoCrateMetadata(input: RoCrateInput): string {
 
   if (input.license) {
     rootDataset.license = { '@id': input.license }
+  }
+
+  if (input.website) {
+    rootDataset.subjectOf = { '@id': input.website.path }
+    crate.addEntity({ '@id': input.website.path, '@type': 'CreativeWork', name: input.website.name,
+      encodingFormat: 'text/html', about: { '@id': rootDataset['@id'] } })
   }
 
   return JSON.stringify(crate, null, 2)

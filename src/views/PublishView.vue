@@ -10,6 +10,7 @@ import { useDataStore } from '@/stores/dataStore'
 import { useMetadataStore } from '@/stores/metadataStore'
 import { useMappingStore } from '@/stores/mappingStore'
 import { useProjectStore } from '@/stores/projectStore'
+import { useExploreStore } from '@/stores/exploreStore'
 import { downloadBlob } from '@/services/export/exportService'
 import { useDatasetMetadataWorkflow } from '@/features/export/useDatasetMetadataWorkflow'
 import { useShaclFormViewer, type ShaclFormElement } from '@/features/shacl/useShaclFormViewer'
@@ -30,6 +31,7 @@ const dataStore = useDataStore()
 const metadataStore = useMetadataStore()
 const mappingStore = useMappingStore()
 const projectStore = useProjectStore()
+const exploreStore = useExploreStore()
 
 const { sources } = storeToRefs(dataStore)
 const { rootProfiles, combinedTurtle, isResolvingImports } = storeToRefs(metadataStore)
@@ -91,6 +93,9 @@ async function exportCrate(): Promise<void> {
       profiles: shapesStore.profiles,
       sources: sources.value,
       mappingEdges: mappingStore.state.edges,
+      subjectIdentifiers: mappingStore.state.subjectIdentifiers,
+      stagingColumns: mappingStore.state.stagingColumns,
+      explore: exploreStore.createSnapshot(),
       metadataTurtle: metadataStore.getCombinedMetadataTurtle(),
     })
     const result = await buildRoCrateFromPipelineState(pipelineState)

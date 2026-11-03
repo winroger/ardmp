@@ -16,6 +16,9 @@ import type { ApplicationProfile, ShaclProfile } from '@/domain/NodeShape'
 import { mappingSecondarySourceHeader, mappingTransformId, type MappingState } from '@/domain/Mapping'
 import { findTransformSemanticsHandler } from '@/features/mapping/mappingExtensionRegistry'
 import { entityExportSources } from '@/services/mapping/entityExport'
+import { buildRuntimeStagingShapes } from '@/services/mapping/stagingShapes'
+import type { ExploreSnapshot } from '@/services/project/projectSnapshot'
+import { buildCrateViewerPayload } from './crateViewerPayload'
 
 export interface ExportInput {
   projectTitle: string
@@ -25,6 +28,7 @@ export interface ExportInput {
   mapping: MappingState
   /** Optional pre-rendered turtle from `<shacl-form>` web components. */
   metadataTurtle?: string
+  explore?: ExploreSnapshot
 }
 
 export interface ExportResult {
@@ -56,11 +60,20 @@ This bundle is an [**RO-Crate 1.2**](https://w3id.org/ro/crate/1.2) packaged by
 ## Contents
 
 - \`ro-crate-metadata.json\` — RO-Crate metadata descriptor (root)
+- \`ro-crate-preview.html\` — interactive Review and saved Analyze views. Extract the ZIP and open this file in a browser; no server or installation is needed.
 - \`shapes/\` — ${profiles} SHACL profile(s) (\`text/turtle\`)
 - \`sources/\` — ${sources} source table(s) (\`text/csv\`)
 - \`data/dataset.ttl\` — generated RDF graph
 - \`mapping/mapping.rml.ttl\` — RML mapping export
 - Includes ${mappings} mapping edge(s) reflected in the exported RML
+
+The viewer contains the published RDF and resolved SHACL profiles. Its search,
+filters, linked-entity navigation, relationship graphs, saved bar/scatter charts,
+and geographic points work offline. External images and optional OpenStreetMap
+basemaps require internet and can be enabled in the viewer. It does not connect
+to Airtable or rerun enrichment services. Viewer searches do not change the
+published dataset file. Analysis configurations and materialized dataframes,
+when saved, are also available in \`analysis/\`.
 `
 }
 
@@ -79,6 +92,8 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
   const zip = new JSZip()
   const files: RoCrateFile[] = []
   const exportSources = [...input.sources, ...buildTransformExportSources(input.mapping, input.sources), ...entityExportSources(input.ap, input.mapping, input.sources)]
+  const staging = buildRuntimeStagingShapes(input.sources, input.mapping, input.ap.allNodeShapes())
+  const exportProfiles = [...new Map([...input.profiles, ...staging.profile ? [staging.profile] : []].map(profile => [profile.iri, profile])).values()]
 
   // 1. Generated RDF
   const result = generateRdf(input.ap, input.mapping, input.sources)
@@ -98,12 +113,12 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
   })
 
   // 2. SHACL profiles
-  const profileSummaries = input.profiles.map(profile => ({
+  const profileSummaries = exportProfiles.map(profile => ({
     profile,
     metadata: extractProfileMetadata(profile.rawTurtle, profile.iri),
   }))
 
-  input.profiles.forEach((p, idx) => {
+  exportProfiles.forEach((p, idx) => {
     const safeName = (p.iri.split(/[/#]/).filter(Boolean).pop() ?? `profile-${idx}`)
       .replace(/[^a-z0-9-_]/gi, '_')
     const path = `shapes/${safeName}.ttl`
@@ -147,7 +162,7 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
   // 5. README
   zip.file('README.md', buildReadme(
     input.projectTitle,
-    input.profiles.length,
+    exportProfiles.length,
     exportSources.length,
     input.mapping.edges.length,
   ))
@@ -161,14 +176,26 @@ export async function buildRoCratePackage(input: ExportInput): Promise<ExportPac
   const fallbackDescription = profileDescriptions.length > 0
     ? profileDescriptions.join(' | ')
     : `RDF dataset bundled by Architectural RDM-Pipeline from ${input.profiles.length} SHACL profile(s) and ${input.sources.length} source table(s).`
-  const metadata = buildRoCrateMetadata({
+  const metadataInput = {
     name: derivedMetadata.name ?? input.projectTitle,
     description: derivedMetadata.description ?? fallbackDescription,
     datePublished: derivedMetadata.datePublished ?? new Date().toISOString(),
     agents: derivedMetadata.agents,
     license: derivedMetadata.license,
     files,
-  })
+    website: { path: 'ro-crate-preview.html', name: 'Interactive dataset viewer' },
+  }
+  const viewer = buildCrateViewerPayload(input, ttl, exportProfiles, metadataInput.name)
+  if (input.explore) {
+    zip.file('analysis/charts.json', JSON.stringify(viewer.charts, null, 2))
+    zip.file('analysis/dataframes.json', JSON.stringify(viewer.dataframes, null, 2))
+    files.push({ path: 'analysis/charts.json', name: 'Saved chart definitions', encodingFormat: 'application/json' },
+      { path: 'analysis/dataframes.json', name: 'Saved dataframes and materialized values', encodingFormat: 'application/json' })
+  }
+  // Load the standalone runtime only when exporting, keeping it out of app startup.
+  const { buildCrateViewerHtml } = await import('./crateViewerHtml')
+  zip.file('ro-crate-preview.html', buildCrateViewerHtml(viewer, metadataInput))
+  const metadata = buildRoCrateMetadata(metadataInput)
   zip.file('ro-crate-metadata.json', metadata)
 
   const blob = await zip.generateAsync({ type: 'blob' })

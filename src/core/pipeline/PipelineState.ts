@@ -1,6 +1,8 @@
 import type { ApplicationProfile, ShaclProfile } from '@/domain/NodeShape'
 import type { DataSource } from '@/domain/DataSource'
-import type { MappingEdge } from '@/domain/Mapping'
+import type { MappingEdge, SubjectIdentifierMapping } from '@/domain/Mapping'
+import type { StagingColumnSelectionState } from '@/services/mapping/stagingSemantics'
+import type { ExploreSnapshot } from '@/services/project/projectSnapshot'
 
 /**
  * Plain exportable runtime state for the current ARDMP pipeline.
@@ -14,5 +16,8 @@ export interface PipelineState {
   profiles: ShaclProfile[]
   sources: DataSource[]
   mappingEdges: MappingEdge[]
+  subjectIdentifiers?: SubjectIdentifierMapping[]
+  stagingColumns?: StagingColumnSelectionState
+  explore?: ExploreSnapshot
   metadataTurtle?: string
 }

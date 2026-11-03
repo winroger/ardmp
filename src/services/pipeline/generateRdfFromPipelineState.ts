@@ -1,5 +1,5 @@
 import type { PipelineState } from '@/core/pipeline/PipelineState'
-import { MappingState } from '@/domain/Mapping'
+import { pipelineStateToMapping } from './pipelineExportAdapter'
 import { generateRdf, serializeGraph } from '@/services/rdf/rdfGenerator'
 
 export async function generateRdfFromPipelineState(
@@ -9,8 +9,7 @@ export async function generateRdfFromPipelineState(
     subjectCount: number
     tripleCount: number
   }> {
-  const mapping = new MappingState()
-  mapping.edges = [...state.mappingEdges]
+  const mapping = pipelineStateToMapping(state)
 
   const result = generateRdf(state.ap, mapping, state.sources)
   const turtle = await serializeGraph(result.store, 'text/turtle')

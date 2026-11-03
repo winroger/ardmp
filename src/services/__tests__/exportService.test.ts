@@ -202,7 +202,9 @@ _:alice a foaf:Person ;
       'data/dataset.ttl',
       'mapping/mapping.rml.ttl',
       'ro-crate-metadata.json',
+      'ro-crate-preview.html',
       'shapes/BuildingShape.ttl',
+      'shapes/runtime.ttl',
       'sources/source_csv.csv',
     ]
 
@@ -234,7 +236,7 @@ _:alice a foaf:Person ;
     })
     expect(Array.isArray((root as { hasPart?: unknown[] } | undefined)?.hasPart)).toBe(true)
     expect((root as { hasPart: Array<{ '@id': string }> }).hasPart.map(part => part['@id']).sort())
-      .toEqual(expectedPaths.filter(file => file !== 'ro-crate-metadata.json').sort())
+      .toEqual(expectedPaths.filter(file => !['ro-crate-metadata.json', 'ro-crate-preview.html'].includes(file)).sort())
     expect(fileIds).toEqual(expect.arrayContaining(expectedPaths))
     expect(fileIds).not.toContain('mapping/mapping.json')
   })

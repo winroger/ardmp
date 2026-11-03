@@ -5,6 +5,7 @@ import { pipelineStateToExportInput } from '@/services/pipeline/pipelineExportAd
 import { buildRoCrateFromPipelineState } from '@/services/pipeline/buildRoCrateFromPipelineState'
 import { generateRdfFromPipelineState } from '@/services/pipeline/generateRdfFromPipelineState'
 import { generateRmlFromPipelineState } from '@/services/pipeline/generateRmlFromPipelineState'
+import { crateViewerFixture } from './crateViewerFixture'
 import {
   createMinimalExportApplicationProfile,
   createMinimalExportMapping,
@@ -26,6 +27,28 @@ function createFixturePipelineState() {
 }
 
 describe('pipeline services', () => {
+  it('preserves and isolates identifier, staging and saved-analysis settings across export adaptation', () => {
+    const input = crateViewerFixture()
+    const state = createPipelineState({ ...input, mappingEdges: input.mapping.edges,
+      subjectIdentifiers: input.mapping.subjectIdentifiers, stagingColumns: input.mapping.stagingColumns })
+    const exported = pipelineStateToExportInput(state)
+    expect(exported.mapping.subjectIdentifiers).toEqual(input.mapping.subjectIdentifiers)
+    expect(exported.mapping.stagingColumns).toEqual(input.mapping.stagingColumns)
+    expect(exported.explore).toEqual(input.explore)
+    exported.mapping.subjectIdentifiers[0].header = 'changed'
+    exported.mapping.stagingColumns.inactiveColumnsBySource.buildings.push('changed')
+    exported.explore!.dataframes[0].columns[0].path[0].label = 'changed'
+    expect(state.subjectIdentifiers![0].header).toBe('PublicKey')
+    expect(state.stagingColumns!.inactiveColumnsBySource.buildings).not.toContain('changed')
+    expect(state.explore!.dataframes[0].columns[0].path[0].label).toBe('Name')
+    state.subjectIdentifiers![0].header = 'snapshot change'
+    state.stagingColumns!.inactiveColumnsBySource.buildings.push('snapshot change')
+    state.explore!.dataframes[0].columns[0].path[0].label = 'snapshot change'
+    expect(input.mapping.subjectIdentifiers[0].header).toBe('PublicKey')
+    expect(input.mapping.stagingColumns.inactiveColumnsBySource.buildings).not.toContain('snapshot change')
+    expect(input.explore.dataframes[0].columns[0].path[0].label).toBe('Name')
+  })
+
   it('creates a plain PipelineState snapshot from current runtime-like input', () => {
     const pipelineState = createFixturePipelineState()
 
