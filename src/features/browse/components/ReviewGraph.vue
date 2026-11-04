@@ -6,7 +6,7 @@ import { reviewGraphSelection } from '../reviewGraphSelection'
 import ReviewGraphCanvas from './ReviewGraphCanvas.vue'
 
 const props = defineProps<{ model: BrowseModel; subjects: readonly BrowseSubject[]; selectedIri?: string | null }>()
-const emit = defineEmits<{ openSubject: [iri: string] }>()
+const emit = defineEmits<{ openSubject: [iri: string]; deselect: [] }>()
 const mode = ref<'type' | 'network'>('type')
 const labels = ref(false)
 const showConnected = ref(false)
@@ -58,6 +58,7 @@ function zoom(factor: number): void { canvas.value?.zoom(factor) }
       <ReviewGraphCanvas
         ref="canvas" class="graph-canvas" :elements="complete.elements" :visible-iris="visibleIris" :matched-iris="matchedIris" :selected-iri="selectedIri" :mode="mode" :labels="labels"
         @open-subject="iri => emit('openSubject', iri)" @zoom-change="value => zoomPercent = value"
+        @deselect="inspectIri = ''; emit('deselect')"
       />
       <p v-if="!visibleSubjects.length" class="graph-message" role="status">No entities match the filters.</p>
     </div>

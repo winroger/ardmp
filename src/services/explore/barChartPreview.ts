@@ -1,3 +1,4 @@
+import { chartColors } from '@/styles/brandColors'
 import type { EChartsOption } from 'echarts'
 import type { ExploreChartDefinitionSnapshot } from '@/services/project/projectSnapshot'
 import type { ExploreDataframeColumnSnapshot } from '@/services/project/projectSnapshot'
@@ -63,7 +64,7 @@ export function buildBarChartPreview(
     series: [{
       type: 'bar',
       data: entries.map(([, value]) => value),
-      itemStyle: { color: '#2563eb' },
+      itemStyle: { color: chartColors[0] },
     }],
   }
 }

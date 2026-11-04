@@ -19,7 +19,7 @@ export function buildCrateViewerHtml(payload: CrateViewerPayload, metadata: Data
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer"><title>${text(metadata.name)}</title>
 <style>${css.replace(/<\/style/gi, '<\\/style')}</style>
-<style>.crate-header{padding:24px;background:white;border-bottom:1px solid #e3e6eb}.crate-header h1{margin:0 0 8px;font-size:1.6rem}.crate-header p{margin:8px 0;max-width:1000px}.crate-files{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}.crate-files a{color:#2563eb}.crate-meta{color:#64748b;font-size:.875rem}body{height:auto;min-height:100vh}#ardmp-crate-viewer{min-height:600px}</style>
+<style>.crate-header{padding:24px;background:var(--color-logo-panel);border-bottom:1px solid var(--color-border)}.crate-header h1{margin:0 0 8px;font-size:1.6rem}.crate-header p{margin:8px 0;max-width:1000px}.crate-files{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}.crate-files a{color:var(--color-text-accent)}.crate-meta{color:var(--color-text-muted);font-size:.875rem}body{height:auto;min-height:100vh}#ardmp-crate-viewer{min-height:600px}</style>
 </head><body><header class="crate-header"><h1>${text(metadata.name)}</h1>
 <p>${text(metadata.description)}</p><p class="crate-meta">Published ${text(metadata.datePublished)}${metadata.agents?.length ? ` · ${text(metadata.agents.map(agent => agent.name).join(', '))}` : ''}</p>
 ${metadata.license ? `<p class="crate-meta">License: ${license}</p>` : ''}

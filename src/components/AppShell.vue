@@ -28,6 +28,7 @@ const shapesStore = useShapesStore()
 const toast = useToast()
 const confirm = useConfirm()
 const projectUploadInputRef = ref<HTMLInputElement | null>(null)
+const logoUrl = `${import.meta.env.BASE_URL}ardmp-logo.svg`
 
 const activeMode = computed<AppModeKey>(() => {
   const matchedMode = APP_MODES.find(mode => route.path.startsWith(mode.path))
@@ -113,10 +114,7 @@ function onProjectFileChange(event: Event): void {
   <div class="app-shell">
     <header class="app-shell__header">
       <div class="app-shell__brand">
-        <i class="pi pi-sitemap app-shell__brand-icon" />
-        <div class="app-shell__brand-copy">
-          <h1 class="app-shell__title">Architectural RDM-Pipeline</h1>
-        </div>
+        <img :src="logoUrl" class="app-shell__brand-logo" alt="ARDMP" width="156" height="44">
       </div>
 
       <nav class="app-shell__nav" aria-label="Application sections">
@@ -125,8 +123,9 @@ function onProjectFileChange(event: Event): void {
           :key="mode.key"
           :label="mode.label"
           :icon="mode.icon"
-          :severity="activeMode === mode.key ? 'contrast' : 'secondary'"
+          :severity="activeMode === mode.key ? undefined : 'secondary'"
           :outlined="activeMode !== mode.key"
+          :aria-current="activeMode === mode.key ? 'page' : undefined"
           size="small"
           @click="navigate(mode.key)"
         />
@@ -144,7 +143,6 @@ function onProjectFileChange(event: Event): void {
         <Button
           label="Download Project"
           icon="pi pi-download"
-          severity="contrast"
           size="small"
           @click="downloadProject"
         />
@@ -175,12 +173,12 @@ function onProjectFileChange(event: Event): void {
 
 .app-shell__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-logo-panel);
 }
 
 .app-shell__brand {
@@ -189,21 +187,12 @@ function onProjectFileChange(event: Event): void {
   gap: var(--space-3);
 }
 
-.app-shell__brand-icon {
-  font-size: 1.5rem;
-  color: var(--color-primary);
+.app-shell__brand-logo {
+  display: block;
+  width: 156px;
+  height: 44px;
+  object-fit: contain;
   flex-shrink: 0;
-}
-
-.app-shell__brand-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.app-shell__title {
-  margin: 0;
-  font-size: 1.3rem;
 }
 
 .app-shell__nav {

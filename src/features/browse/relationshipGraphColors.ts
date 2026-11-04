@@ -1,5 +1,6 @@
 import type { BrowseModel, BrowseSubject } from '@/services/browse/browseService'
 import { localName } from './browseViewHelpers'
+import { lightPalette } from '@/styles/brandColors'
 
 export interface RelationshipClassColor {
   iri: string
@@ -9,12 +10,12 @@ export interface RelationshipClassColor {
 }
 
 const PALETTE = [
-  ['#dbeafe', '#2563eb'], ['#dcfce7', '#15803d'], ['#ffedd5', '#c2410c'],
-  ['#f3e8ff', '#9333ea'], ['#ffe4e6', '#be123c'], ['#cffafe', '#0e7490'],
-  ['#fef9c3', '#a16207'], ['#e0e7ff', '#4338ca'], ['#fae8ff', '#a21caf'],
-  ['#ccfbf1', '#0f766e'],
+  ['#E2E4FD', '#5865F2'], ['#DDEEE7', '#16856A'], ['#F0DEE8', '#A64D79'],
+  ['#DFEBFA', '#3079AE'], ['#FAE8CD', '#B77B20'], ['#E6E0F5', '#7F5AB5'],
+  ['#D7ECEE', '#197F8C'], ['#F5DFD8', '#BB5F42'], ['#ECECBF', '#7D8727'],
+  ['#EBE0D4', '#896447'], ['#F1DDE9', '#B1488A'], ['#DDE7D4', '#548343'],
 ]
-const UNTYPED: RelationshipClassColor = { iri: '__untyped__', label: 'Untyped', color: '#f1f5f9', border: '#64748b' }
+const UNTYPED: RelationshipClassColor = { iri: '__untyped__', label: 'Untyped', color: lightPalette.surface, border: lightPalette.secondaryText }
 
 /** Use the complete dataset so colors remain consistent when navigating relationships. */
 export function relationshipClassColors(model: BrowseModel | null): Map<string, RelationshipClassColor> {

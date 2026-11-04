@@ -4,16 +4,18 @@ import type { ElementDefinition } from 'cytoscape'
 import { layoutReviewNetwork } from '../graphNetworkLayout'
 import { resizeGraphViewport, zoomGraphAt, type GraphViewport } from '../graphViewport'
 import { graphEdgeDetail } from '../graphEdgeDetail'
+import { lightPalette } from '@/styles/brandColors'
+import { graphFocus } from '../graphFocus'
 
 const props = defineProps<{ elements: readonly ElementDefinition[]; visibleIris: readonly string[]; matchedIris?: readonly string[]; selectedIri?: string | null; mode: 'type' | 'network'; labels: boolean }>()
-const emit = defineEmits<{ openSubject: [iri: string]; zoomChange: [percent: number] }>()
+const emit = defineEmits<{ openSubject: [iri: string]; zoomChange: [percent: number]; deselect: [] }>()
 const host = ref<HTMLElement | null>(null), canvas = ref<HTMLCanvasElement | null>(null)
 const tooltip = ref(''), tooltipPosition = ref({ left: '0px', top: '0px' })
 interface Node { id: string; iri: string; label: string; color: string; group: string; x: number; y: number; nx: number; ny: number; visible: boolean; context: boolean }
 let nodes: Node[] = []
 let edges: Array<{ a: Node; b: Node }> = []
 let visibleEdges: typeof edges = []
-let theme = { text: '#1a2230', edge: '#6b7280', primary: '#2563eb', font: 'sans-serif' }
+let theme: { text: string; edge: string; primary: string; font: string } = { text: lightPalette.text, edge: lightPalette.secondaryText, primary: lightPalette.accent, font: 'Quantico, sans-serif' }
 let groups: Array<{ label: string; color: string; x: number; y: number; type: string }> = []
 let width = 0, height = 0, frame = 0
 let view: GraphViewport = { x: 0, y: 0, scale: 1 }
@@ -32,7 +34,9 @@ function draw(): void {
   const ratio = canvas.value!.width / width
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, width, height)
   const detail = graphEdgeDetail(view.scale, props.mode, visibleEdges.length)
-  ctx.strokeStyle = theme.edge; ctx.globalAlpha = detail.opacity; ctx.lineWidth = 0.5; ctx.beginPath()
+  const selected = nodes.find(node => node.visible && node.iri === props.selectedIri)
+  const focused = graphFocus(selected?.id, visibleEdges.map(({ a, b }) => ({ source: a.id, target: b.id })))
+  ctx.strokeStyle = theme.edge; ctx.globalAlpha = focused ? 0.025 : detail.opacity; ctx.lineWidth = 0.5; ctx.beginPath()
   for (let i = 0; i < visibleEdges.length; i += detail.stride) {
     const { a, b } = visibleEdges[i]
     const p = position(a), q = position(b)
@@ -40,6 +44,14 @@ function draw(): void {
   }
   ctx.stroke()
   ctx.globalAlpha = 1
+  if (selected) {
+    ctx.strokeStyle = theme.primary; ctx.lineWidth = 1; ctx.globalAlpha = 0.65; ctx.beginPath()
+    for (const { a, b } of visibleEdges) {
+      if (a !== selected && b !== selected) continue
+      ctx.moveTo(...position(a)); ctx.lineTo(...position(b))
+    }
+    ctx.stroke(); ctx.globalAlpha = 1
+  }
   if (hover) {
     ctx.strokeStyle = theme.primary; ctx.lineWidth = 1.1; ctx.beginPath()
     for (const { a, b } of visibleEdges) {
@@ -64,6 +76,7 @@ function draw(): void {
     if (!node.visible) continue
     const [x, y] = position(node)
     if (x < -160 || y < -25 || x > width + 25 || y > height + 25) continue
+    ctx.globalAlpha = focused && !focused.has(node.id) ? 0.13 : 1
     const radius = 2.8 * Math.sqrt(view.scale) + (node === hover ? 2 : 0)
     ctx.fillStyle = node.color; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2)
     if (node.context) { ctx.strokeStyle = node.color; ctx.lineWidth = 1; ctx.stroke() }
@@ -73,6 +86,7 @@ function draw(): void {
       ctx.font = `11px ${theme.font}`; ctx.fillStyle = theme.text
       ctx.fillText(node.label.length > 42 ? `${node.label.slice(0, 40)}…` : node.label, x + radius + 6, y + 4)
     }
+    ctx.globalAlpha = 1
   }
 }
 function scheduleDraw(): void { if (!disposed && !frame) frame = requestAnimationFrame(draw) }
@@ -176,7 +190,11 @@ function pointerUp(event: PointerEvent): void {
   const click = !drag.moved
   drag = undefined
   if (canvas.value!.hasPointerCapture(event.pointerId)) canvas.value!.releasePointerCapture(event.pointerId)
-  if (click) { const node = pick(...local(event)); if (node) emit('openSubject', node.iri) }
+  if (click) {
+    const node = pick(...local(event))
+    if (node) emit('openSubject', node.iri)
+    else emit('deselect')
+  }
 }
 watch(() => props.elements, prepare)
 watch(() => [props.visibleIris, props.matchedIris], updateVisibility)

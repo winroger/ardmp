@@ -13,8 +13,8 @@ describe('relationship graph class colors', () => {
       { classIri: 'urn:Organization', classLabel: 'Organization', count: 1, subjects: [organization] },
     ] }
     const colors = relationshipClassColors(model)
-    expect(relationshipSubjectColor(building, colors)).toMatchObject({ label: 'Building', color: '#dbeafe' })
-    expect(relationshipSubjectColor(organization, colors)).toMatchObject({ label: 'Organization', color: '#dcfce7' })
+    expect(relationshipSubjectColor(building, colors)).toMatchObject({ label: 'Building', color: '#E2E4FD', border: '#5865F2' })
+    expect(relationshipSubjectColor(organization, colors)).toMatchObject({ label: 'Organization', color: '#DDEEE7', border: '#16856A' })
     expect(relationshipClassColors({ ...model, groups: [...model.groups].reverse() })).toEqual(colors)
     expect(relationshipSubjectColor(subject('urn:b2', ['urn:Building']), colors)).toEqual(relationshipSubjectColor(building, colors))
   })
@@ -24,6 +24,6 @@ describe('relationship graph class colors', () => {
     const model: BrowseModel = { totalSubjects: 1, groups: [{ classIri: 'urn:Organization', classLabel: 'Organization', count: 1, subjects: [organization] }] }
     expect(relationshipSubjectColor(organization, relationshipClassColors(model)).iri).toBe('urn:Agent')
     expect(organization.classes).toEqual(['urn:Organization', 'urn:Agent'])
-    expect(relationshipSubjectColor(subject('urn:x', []), relationshipClassColors(null))).toMatchObject({ label: 'Untyped', color: '#f1f5f9' })
+    expect(relationshipSubjectColor(subject('urn:x', []), relationshipClassColors(null))).toMatchObject({ label: 'Untyped', color: '#EFF0EA' })
   })
 })

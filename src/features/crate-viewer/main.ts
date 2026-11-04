@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
+import { applicationTheme } from '@/styles/primeVueTheme'
 import ToastService from 'primevue/toastservice'
 import CrateViewerApp from './CrateViewerApp.vue'
 import type { CrateViewerPayload } from './types'
@@ -13,7 +13,7 @@ try {
   const payload = JSON.parse(element.textContent) as CrateViewerPayload
   if (payload.version !== 1) throw new Error('Unsupported dataset viewer version.')
   const app = createApp(CrateViewerApp, { payload })
-  app.use(PrimeVue, { theme: { preset: Aura, options: { darkModeSelector: '.viewer-dark' } } })
+  app.use(PrimeVue, { theme: { preset: applicationTheme, options: { darkModeSelector: false } } })
   app.use(ToastService)
   app.mount('#ardmp-crate-viewer')
   // Dataset IRIs are data, not executable navigation targets.

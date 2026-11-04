@@ -31,7 +31,7 @@ vi.mock('@/features/browse/components/ReviewFilters.vue', () => ({
 }))
 
 vi.mock('@/features/browse/components/ReviewGraph.vue', () => ({
-  default: { name: 'ReviewGraph', props: ['model', 'subjects'], emits: ['openSubject'], template: '<div class="graph-view-stub" />' },
+  default: { name: 'ReviewGraph', props: ['model', 'subjects'], emits: ['openSubject', 'deselect'], template: '<div class="graph-view-stub" />' },
 }))
 
 vi.mock('@/services/rdf/rdfGenerator', () => ({
@@ -275,6 +275,10 @@ describe('ReviewView', () => {
     graph.vm.$emit('openSubject', 'http://example.org/a')
     await flushPromises()
     expect(wrapper.findComponent(SubjectDetailPanel).props('subjectIri')).toBe('http://example.org/a')
+    graph.vm.$emit('deselect')
+    await flushPromises()
+    expect(wrapper.findComponent(SubjectDetailPanel).exists()).toBe(false)
+    expect(wrapper.find('.review-workspace').classes()).not.toContain('has-details')
     await wrapper.find('[data-layout="ttl"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('.ttl-output').text()).toContain('Alpha')

@@ -199,7 +199,7 @@ header {
   color: inherit;
 
   &:hover {
-    background: white;
+    background: var(--color-surface-2);
     border-color: color-mix(in srgb, var(--enrich-header-color) 35%, white);
   }
 }

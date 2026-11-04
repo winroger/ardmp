@@ -162,13 +162,13 @@ onBeforeUnmount(() => {
 
 :deep(.explore-geo-popup__title) {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin-bottom: 0.25rem;
 }
 
 :deep(.explore-geo-popup__coordinates) {
   font-size: 0.8125rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
 
@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #2563eb;
+  color: var(--color-text-accent);
   cursor: pointer;
   text-align: left;
   text-decoration: underline;

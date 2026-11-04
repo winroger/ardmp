@@ -1,3 +1,4 @@
+import { chartColors } from '@/styles/brandColors'
 import type { EChartsOption } from 'echarts'
 import type { ExploreChartDefinitionSnapshot } from '@/services/project/projectSnapshot'
 import type { ExploreDataframeModel } from '@/services/explore/exploreService'
@@ -23,7 +24,7 @@ export function buildScatterChartPreview(
   const colorKey = chart.fieldMapping.color
   const sizeKey = chart.fieldMapping.size
   const medianLineBasis = chart.fieldMapping.medianLineBasis
-  const palette = ['#0f766e', '#2563eb', '#ea580c', '#7c3aed', '#dc2626', '#0891b2']
+  const palette = chartColors
   const colors = new Map<string, string>()
 
   const sizeValues = dataframeModel.rows
@@ -106,12 +107,12 @@ export function buildScatterChartPreview(
         const point = value as { symbolSize?: number }
         return point.symbolSize ?? 14
       },
-      itemStyle: colorKey ? undefined : { color: '#0f766e' },
+      itemStyle: colorKey ? undefined : { color: chartColors[0] },
       markLine: medianValue === null
         ? undefined
         : {
           symbol: ['none', 'none'],
-          lineStyle: { type: 'dashed', color: '#dc2626' },
+          lineStyle: { type: 'dashed', color: chartColors[2] },
           data: [medianLineBasis === 'x'
             ? { xAxis: medianValue, name: `Median ${fieldLabel(dataframeModel.definition.columns, xKey, 'X')}` }
             : { yAxis: medianValue, name: `Median ${fieldLabel(dataframeModel.definition.columns, yKey, 'Y')}` }],

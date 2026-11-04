@@ -14,6 +14,7 @@ import { useExploreStore } from '@/stores/exploreStore'
 import { downloadBlob } from '@/services/export/exportService'
 import { useDatasetMetadataWorkflow } from '@/features/export/useDatasetMetadataWorkflow'
 import { useShaclFormViewer, type ShaclFormElement } from '@/features/shacl/useShaclFormViewer'
+import { applyApplicationShaclTheme } from '@/features/shacl/applicationShaclTheme'
 import { useShapesStore } from '@/stores/shapesStore'
 import { createPipelineState } from '@/services/pipeline/createPipelineState'
 import { buildRoCrateFromPipelineState } from '@/services/pipeline/buildRoCrateFromPipelineState'
@@ -126,6 +127,7 @@ watch(metadataLoadError, value => {
 
 useShaclFormViewer({
   formRef: viewerRef,
+  prepareElement: applyApplicationShaclTheme,
   watchSources: [viewerFormKey],
   getShapesTurtle: () => combinedTurtle.value,
   getValuesTurtle: () => metadataTurtle.value,
@@ -140,6 +142,7 @@ useShaclFormViewer({
 
 useShaclFormViewer({
   formRef: editorRef,
+  prepareElement: applyApplicationShaclTheme,
   watchSources: [editorFormKey, isEditing],
   getShapesTurtle: () => combinedTurtle.value,
   getValuesTurtle: () => draftMetadataTurtle.value,
@@ -232,7 +235,6 @@ useShaclFormViewer({
             data-collapse="open"
             data-ignore-owl-imports
             data-language="en"
-            data-show-root-shape-label="false"
           />
 
           <div v-else class="editor-shell">

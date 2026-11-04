@@ -82,13 +82,13 @@ function openSubject(iri: string): void {
 <style scoped>
 .viewer-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
 .viewer-tabs { display: flex; gap: 0.5rem; }
-.viewer-tabs button { border: 1px solid var(--color-border); border-radius: 8px; padding: 0.6rem 1rem; font: inherit; background: white; cursor: pointer; }
-.viewer-tabs button[aria-selected="true"] { background: #0f172a; color: white; border-color: #0f172a; }
+.viewer-tabs button { border: 1px solid var(--color-border); border-radius: 8px; padding: 0.6rem 1rem; font: inherit; background: var(--color-surface-2); cursor: pointer; }
+.viewer-tabs button[aria-selected="true"] { background: var(--color-primary); color: white; border-color: var(--color-primary); }
 .external-image-control { margin-left: auto; font-size: 0.85rem; }
 .snapshot-note { margin: 0; padding: 0.75rem 1.5rem; color: var(--color-text-muted); font-size: 0.85rem; }
 .viewer-review { height: max(600px, calc(100vh - 300px)); }
 .viewer-analyze { padding: 1.5rem; max-width: 1440px; margin: auto; display: flex; flex-direction: column; gap: 1.25rem; }
-.saved-chart, .saved-dataframe { padding: 1rem; border: 1px solid var(--color-border); border-radius: 10px; background: white; }
+.saved-chart, .saved-dataframe { padding: 1rem; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface-2); }
 .saved-chart h2 { margin: 0 0 0.25rem; font-size: 1.15rem; }
 .chart-caption { margin: 0 0 1rem; color: var(--color-text-muted); }
 .saved-dataframe summary { cursor: pointer; font-weight: 600; }

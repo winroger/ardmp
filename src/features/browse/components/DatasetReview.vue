@@ -327,6 +327,7 @@ async function copyTurtle(): Promise<void> {
           :subjects="visibleSubjects"
           :selected-iri="detailSubjectIri"
           @open-subject="iri => openDetail({ iri, label: '', classes: [], properties: [] })"
+          @deselect="detailSubjectIri = null"
         />
 
         <section v-else-if="layout === 'ttl'" class="ttl-view">

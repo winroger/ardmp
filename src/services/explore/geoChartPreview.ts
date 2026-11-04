@@ -1,3 +1,4 @@
+import { chartColors } from '@/styles/brandColors'
 import type { ExploreChartDefinitionSnapshot } from '@/services/project/projectSnapshot'
 import type { ExploreDataframeModel } from '@/services/explore/exploreService'
 import { fieldLabel, isWktField, numericValue, parseWktPoint, stringValue } from '@/services/explore/chartPreviewShared'
@@ -35,7 +36,7 @@ export function buildGeoChartPreview(
   const colorKey = chart.fieldMapping.color
   const sizeKey = chart.fieldMapping.size
   const labelKey = chart.fieldMapping.label
-  const palette = ['#0f766e', '#2563eb', '#ea580c', '#7c3aed', '#dc2626', '#0891b2']
+  const palette = chartColors
   const colors = new Map<string, string>()
 
   const sizeValues = dataframeModel.rows
@@ -81,7 +82,7 @@ export function buildGeoChartPreview(
       lat: coordinate.lat,
       lng: coordinate.lng,
       colorGroup,
-      color: colorGroup ? (colors.get(colorGroup) ?? '#0f766e') : '#0f766e',
+      color: colorGroup ? (colors.get(colorGroup) ?? chartColors[0]) : chartColors[0],
       radius: nextRadius,
       subjects: [{
         subjectIri: row.subjectIri,

@@ -6,6 +6,7 @@ import type { BrowseModel } from '@/services/browse/browseService'
 import type { NodeShape } from '@/domain/NodeShape'
 import { localName, thumbnailUrlForSubject } from '../browseViewHelpers'
 import { useShaclFormViewer, type ShaclFormElement } from '@/features/shacl/useShaclFormViewer'
+import { applyApplicationShaclTheme } from '@/features/shacl/applicationShaclTheme'
 
 const props = withDefaults(defineProps<{
   subjectIri: string | null
@@ -40,6 +41,7 @@ useShaclFormViewer({
   getExtraAttributes: () => ({ 'data-ignore-owl-imports': 'true' }),
   shouldApply: () => Boolean(subject.value && matchingShape.value),
   prepareElement: element => {
+    applyApplicationShaclTheme(element)
     if (!props.offline && !preparedForms.has(element)) {
       element.registerPlugin?.(new LeafletPlugin({ datatype: 'http://www.opengis.net/ont/geosparql#wktLiteral' }))
       preparedForms.add(element)
@@ -64,7 +66,7 @@ function followInternalLink(event: MouseEvent): void {
       <div class="detail-class-list">
         <span v-for="type in subject.classes" :key="type" class="detail-class" :title="type">{{ classLabels.get(type) ?? localName(type) }}</span>
       </div>
-      <p class="detail-iri mono-meta">{{ subject.iri }}</p>
+      <details class="detail-identifier"><summary>Entity identifier</summary><p class="detail-iri mono-meta">{{ subject.iri }}</p></details>
       <img v-if="thumbnailUrl" :src="thumbnailUrl" :alt="`Thumbnail for ${subject.label}`" class="subject-preview-image" loading="lazy">
       <shacl-form
         v-if="matchingShape"
@@ -73,7 +75,6 @@ function followInternalLink(event: MouseEvent): void {
         data-collapse="open"
         data-ignore-owl-imports
         data-language="en"
-        data-show-root-shape-label="false"
         @click="followInternalLink"
       />
       <dl v-else class="detail-properties">
@@ -104,6 +105,8 @@ h2 { margin: 0; font-size: 1rem; line-height: 1.4; overflow-wrap: anywhere; }
 .detail-class-list { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .detail-class { padding: var(--space-1) var(--space-2); background: var(--color-accent-soft); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--color-text); }
 .detail-iri { margin: var(--space-2) 0 var(--space-4); overflow-wrap: anywhere; font-size: 0.7rem; }
+.detail-identifier { margin: var(--space-2) 0 var(--space-3); color: var(--color-text-muted); font-size: 0.75rem; }
+.detail-identifier summary { cursor: pointer; }
 .subject-preview-image { display: block; width: 100%; max-height: 200px; object-fit: contain; margin-bottom: var(--space-4); border-radius: var(--radius-sm); }
 shacl-form { display: block; min-width: 0; --shacl-font-family: var(--font-sans); --shacl-border-color: var(--color-border); }
 .detail-properties { margin: 0; }

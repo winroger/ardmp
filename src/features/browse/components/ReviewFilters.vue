@@ -5,6 +5,7 @@ import type { Query, ShaclForm } from '@ulb-darmstadt/shacl-form'
 import Message from 'primevue/message'
 import type { ReviewQuery, ReviewQueryIndex } from '@/services/browse/reviewQuery'
 import { reviewQueryFields } from '@/features/browse/reviewQueryFields'
+import { applyApplicationShaclTheme } from '@/features/shacl/applicationShaclTheme'
 
 const props = defineProps<{
   shapesTurtle: string
@@ -43,6 +44,7 @@ function initializeForm(): void {
   if (typeof form.setQueryFacetProvider !== 'function') {
     throw new Error('The loaded shacl-form version does not support filters. Restart the development server and reload this page.')
   }
+  applyApplicationShaclTheme(form)
   form.setAttribute('data-mode', 'query')
   form.setAttribute('data-shapes', props.shapesTurtle)
   form.setAttribute('data-shape-subject', props.shapeIri)

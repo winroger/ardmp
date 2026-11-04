@@ -27,6 +27,31 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('ReviewGraphCanvas', () => {
+  it('deselects on an empty canvas click, while panning and entity clicks preserve selection', async () => {
+    const wrapper = mount(ReviewGraphCanvas, { props: { ...props, selectedIri: 'urn:a' } })
+    const canvas = wrapper.find('canvas')
+    canvas.element.setPointerCapture = vi.fn()
+    canvas.element.hasPointerCapture = vi.fn(() => true)
+    canvas.element.releasePointerCapture = vi.fn()
+    const pointer = { pointerId: 1, button: 0, clientX: 20, clientY: 30 }
+    await canvas.trigger('pointerdown', pointer)
+    await canvas.trigger('pointerup', pointer)
+    expect(wrapper.emitted('deselect')).toHaveLength(1)
+
+    // Initial fit puts the first entity at local (200, 190), with the canvas at (10, 20).
+    const entityPointer = { ...pointer, clientX: 210, clientY: 210 }
+    await canvas.trigger('pointerdown', entityPointer)
+    await canvas.trigger('pointerup', entityPointer)
+    expect(wrapper.emitted('openSubject')).toEqual([['urn:a']])
+    expect(wrapper.emitted('deselect')).toHaveLength(1)
+
+    await canvas.trigger('pointerdown', pointer)
+    await canvas.trigger('pointermove', { ...pointer, clientX: 100, clientY: 90 })
+    await canvas.trigger('pointerup', { ...pointer, clientX: 100, clientY: 90 })
+    expect(wrapper.emitted('deselect')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('preserves the viewport through layout, labels, filters and resize, fitting only on request', async () => {
     const wrapper = mount(ReviewGraphCanvas, { props })
     wrapper.vm.zoom(1.25)

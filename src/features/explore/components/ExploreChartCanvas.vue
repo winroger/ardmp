@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
+import { chartColors, lightPalette } from '@/styles/brandColors'
 
 const props = withDefaults(defineProps<{
   option: EChartsOption | null
@@ -19,7 +20,12 @@ const hostStyle = computed(() => ({
 
 function ensureChart(): void {
   if (!host.value) return
-  if (!chart) chart = echarts.init(host.value)
+  if (!chart) chart = echarts.init(host.value, {
+    color: [...chartColors],
+    textStyle: { fontFamily: 'Quantico, sans-serif', color: lightPalette.text },
+    categoryAxis: { axisLine: { lineStyle: { color: lightPalette.chartTrack } }, axisLabel: { color: lightPalette.secondaryText } },
+    valueAxis: { splitLine: { lineStyle: { color: lightPalette.chartTrack } }, axisLabel: { color: lightPalette.secondaryText } },
+  })
 }
 
 function renderChart(): void {

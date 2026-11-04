@@ -24,6 +24,8 @@ describe('SubjectDetailPanel', () => {
     expect(wrapper.find('shacl-form').attributes('data-values-subject')).toBe('http://example.org/b')
     expect(wrapper.find('shacl-form').attributes('data-shape-subject')).toBe('http://example.org/BuildingShape')
     expect(wrapper.find('shacl-form').attributes('data-view')).toBeDefined()
+    expect(wrapper.find('shacl-form').attributes('data-show-root-shape-label')).toBeUndefined()
+    expect(wrapper.find('.detail-identifier').attributes('open')).toBeUndefined()
     const original = wrapper.find('shacl-form').element
     await wrapper.setProps({ subjectIri: 'http://example.org/o' })
     await flushPromises()

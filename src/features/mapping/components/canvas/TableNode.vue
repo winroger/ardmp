@@ -180,7 +180,7 @@ header {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 
   &:hover {
-    background: white;
+    background: var(--color-surface-2);
     border-color: color-mix(in srgb, var(--table-header-color) 35%, white);
   }
 }
@@ -192,7 +192,7 @@ header {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
   &:hover {
-    background: white;
+    background: var(--color-surface-2);
     border-color: color-mix(in srgb, var(--table-header-color) 35%, white);
   }
 

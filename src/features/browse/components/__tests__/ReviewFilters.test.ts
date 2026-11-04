@@ -7,7 +7,7 @@ import { ReviewQueryIndex } from '@/services/browse/reviewQuery'
 import { reviewQueryFields } from '@/features/browse/reviewQueryFields'
 import ReviewFilters from '@/features/browse/components/ReviewFilters.vue'
 
-vi.mock('@ulb-darmstadt/shacl-form', () => ({}))
+vi.mock('@ulb-darmstadt/shacl-form', () => ({ DefaultTheme: class { constructor(public styles: string) {} } }))
 vi.mock('@/features/browse/reviewQueryFields', () => ({ reviewQueryFields: vi.fn(() => []) }))
 
 const props = () => ({ shapesTurtle: '', shapeIri: 'urn:BuildingShape', index: new ReviewQueryIndex(graph()), roots: [] as string[] })
@@ -27,6 +27,7 @@ describe('ReviewFilters initialization', () => {
   it('configures the provider before connecting, refreshes facets, and removes listeners on unmount', async () => {
     const create = document.createElement.bind(document)
     const form = create('shacl-form') as ShaclForm
+    form.setTheme = vi.fn(() => { expect(form.isConnected).toBe(false) })
     let provider: QueryFacetProvider | undefined
     form.setQueryFacetProvider = vi.fn(value => {
       expect(form.isConnected).toBe(false)
@@ -35,6 +36,7 @@ describe('ReviewFilters initialization', () => {
     form.refreshQueryFacets = vi.fn()
     vi.spyOn(document, 'createElement').mockImplementation((tag, options) => tag === 'shacl-form' ? form : create(tag, options))
     const wrapper = mount(ReviewFilters, { props: props(), ...options })
+    expect(form.setTheme).toHaveBeenCalledTimes(1)
     const query = { rootShapeId: 'urn:BuildingShape', criteria: [] }
     const event = () => new CustomEvent('query', { detail: query })
     form.dispatchEvent(event())

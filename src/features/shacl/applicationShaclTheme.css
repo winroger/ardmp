@@ -1,0 +1,74 @@
+:host {
+  --shacl-font-family: var(--font-sans, Quantico, sans-serif);
+  --shacl-font-size: 13px;
+  --shacl-text-color: var(--color-text, #20231f);
+  --shacl-muted-color: var(--color-text-muted, #60645e);
+  --shacl-border-color: var(--color-border, #cfd2ca);
+  --shacl-bg: transparent;
+  --shacl-row-alt-bg: transparent;
+  --shacl-label-width: 100%;
+  --rokit-primary-color: var(--color-primary, #5865f2);
+  --rokit-background-color: var(--color-bg, #f8f8f4);
+  --rokit-light-background-color: var(--color-bg, #f8f8f4);
+  --rokit-light-background-darker-color: var(--color-surface, #eff0ea);
+}
+form { min-width: 0; line-height: 1.5; }
+form > h3 { display: none; }
+shacl-node, shacl-property, .property-instance { min-width: 0; }
+shacl-node h1 { font: 700 13px var(--shacl-font-family); color: var(--shacl-text-color); padding: 8px 0; margin: 8px 0 0; border-bottom: 1px solid var(--shacl-border-color); }
+.mode-view .property-instance:not(:has(shacl-node)):not(:has(.leaflet-container)) { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 9px 0; }
+.mode-view .property-instance label { width: auto; max-width: 100%; padding: 0; font-size: 11px; line-height: 1.4; color: var(--shacl-muted-color); align-self: flex-start; text-decoration: none; }
+.mode-view .property-instance label[title] { text-decoration: none; }
+.mode-view .property-instance > :not(label):not(.remove-button-wrapper):not(.colorize) { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.mode-view .property-instance > a, .mode-view .property-instance > .d-flex { display: block; }
+a, a:visited { color: var(--color-text-accent, #19175c); text-decoration: none; overflow-wrap: anywhere; }
+a:hover { text-decoration: underline; }
+.collapsible { margin: 6px 0; border: 1px solid var(--shacl-border-color); border-radius: 6px; overflow: hidden; font: inherit; }
+.collapsible::part(header) { background: var(--color-surface, #eff0ea); padding: 7px 10px; min-height: 32px; font: inherit; }
+.collapsible::part(label) { font-weight: 700; font-size: 12px; color: var(--shacl-text-color); }
+.collapsible::part(content) { padding: 0 10px 6px; background: transparent; }
+.collapsible > .property-instance:nth-child(even) { background: transparent; }
+.mode-view .leaflet-container { width: 100%; height: 170px !important; min-height: 170px !important; margin: 8px 0; border-radius: 5px; font-family: var(--shacl-font-family); }
+.mode-view .property-instance:has(.leaflet-container) { display: block; }
+.mode-query .query-editor { flex-direction: column; align-items: stretch; gap: 6px; padding: 9px 0; }
+.mode-query .query-editor > label { width: auto; padding: 0; font-size: 12px; line-height: 1.4; color: var(--shacl-muted-color); text-decoration: none; }
+.mode-query .query-controls, .mode-query .query-value-row { width: 100%; min-width: 0; flex-wrap: wrap; gap: 5px; }
+.mode-query .query-value-row > * { flex: 1 1 90px; }
+.mode-query .query-editor rokit-input, .mode-query .query-editor rokit-select, .mode-query .query-editor rokit-slider { font-family: var(--shacl-font-family); font-size: 13px; min-width: 0; }
+.mode-query rokit-input::part(input), .mode-query rokit-select::part(input) { font: inherit; }
+.mode-query .query-structure { padding: 0; }
+.mode-query .query-editor .query-map { height: 160px; min-height: 160px; }
+
+/* Use the same field surfaces and focus treatment while entering filter values. */
+form:is(.mode-query, .mode-edit) :is(rokit-input, rokit-textarea) {
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--shacl-border-color);
+  border-radius: 6px;
+  background: var(--color-bg, #f8f8f4);
+  color: var(--shacl-text-color);
+  font: 13px var(--shacl-font-family);
+}
+form:is(.mode-query, .mode-edit) rokit-select {
+  border: 1px solid var(--shacl-border-color);
+  border-radius: 6px;
+  background: var(--color-bg, #f8f8f4);
+  color: var(--shacl-text-color);
+  font: 13px var(--shacl-font-family);
+}
+form:is(.mode-query, .mode-edit) rokit-select::part(collapsible-header) { min-height: 34px; padding: 3px 8px; background: var(--color-bg, #f8f8f4); }
+form:is(.mode-query, .mode-edit) rokit-select::part(list) { max-height: 220px; overflow-y: auto; background: var(--color-bg, #f8f8f4); font: inherit; color: inherit; }
+form:is(.mode-query, .mode-edit) :is(rokit-input, rokit-select, rokit-textarea):focus-within {
+  border-color: var(--color-primary, #5865f2);
+  box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(88, 101, 242, 0.1));
+}
+form:is(.mode-query, .mode-edit) :is(rokit-input, rokit-textarea)::part(input) { font: inherit; color: inherit; }
+form:is(.mode-query, .mode-edit) :is(rokit-input, rokit-textarea)::part(label) { color: var(--shacl-muted-color); }
+form:is(.mode-query, .mode-edit) rokit-button { font-family: var(--shacl-font-family); font-size: 13px; }
+.mode-edit { padding-left: 0 !important; }
+.mode-edit .property-instance:not(:has(shacl-node)) { flex-direction: column; align-items: stretch; gap: 6px; padding: 9px 0; }
+.mode-edit .property-instance > label { width: auto; padding: 0; align-self: flex-start; color: var(--shacl-muted-color); font-size: 12px; line-height: 1.4; text-decoration: none; }
+.mode-edit .editor:not([type='checkbox']) { width: 100%; min-width: 0; }
+.mode-edit :is(input, textarea, select).editor { border: 1px solid var(--shacl-border-color); border-radius: 6px; background: var(--color-bg, #f8f8f4); color: var(--shacl-text-color); padding: 7px 9px; font: inherit; }
+.mode-edit :is(input, textarea, select).editor:focus-visible { outline: 2px solid var(--color-primary, #5865f2); outline-offset: 1px; }

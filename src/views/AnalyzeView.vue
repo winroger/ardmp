@@ -1013,7 +1013,7 @@ function removeDataframe(dataframeId: string): void {
 
 .saved-chart-tab.is-active {
   border-color: var(--color-primary);
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--color-accent-soft);
 }
 
 .saved-chart-card__body {
@@ -1053,7 +1053,7 @@ function removeDataframe(dataframeId: string): void {
 
 .stepper__step.is-active {
   border-color: var(--color-primary);
-  background: rgba(37, 99, 235, 0.08);
+  background: var(--color-accent-soft);
 }
 
 .stepper__step.is-disabled {
